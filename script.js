@@ -1,6 +1,7 @@
 const DICTIONARY_URL = "https://raw.githubusercontent.com/dwyl/english-words/master/words_dictionary.json";
 let dictionary = [];
 let currentWord = "";
+let initialLength = 3; // To track how many squares we need
 const today = new Date().toDateString();
 
 const ROWS = [
@@ -51,6 +52,7 @@ function setupDailyGame() {
     const viable = Object.keys(counts).filter(s => counts[s] >= 150 && /[AEIOUY]/.test(s));
 
     currentWord = viable[Math.floor(seededRandom * viable.length)];
+    initialLength = currentWord.length; 
     document.getElementById('date-display').innerText = today;
     wordDisplay.innerText = currentWord;
     messageDisplay.innerText = "Your turn! Add a letter.";
@@ -62,11 +64,10 @@ function handleKeyPress(key) {
     currentWord += key;
     wordDisplay.innerText = currentWord;
     
-    // Check if player bricked the word
     if (!dictionary.some(w => w.startsWith(currentWord))) {
         gameOver(`Bricked! No words start with "${currentWord}".`);
     } else {
-        messageDisplay.innerText = "Letter added. Claim Word or Pass to Computer.";
+        messageDisplay.innerText = "Letter added. Claim Word or Pass Turn.";
     }
 }
 
@@ -83,7 +84,7 @@ function triggerComputer() {
             wordDisplay.innerText = currentWord;
             messageDisplay.innerText = "Computer moved. Your turn!";
         } else {
-            messageDisplay.innerText = "Computer couldn't find a move! Your turn.";
+            messageDisplay.innerText = "Computer is stuck! Your turn.";
         }
         inputField.disabled = false;
         passBtn.disabled = false;
@@ -138,9 +139,23 @@ function displaySavedGame(data) {
 }
 
 function shareResult() {
-    const status = messageDisplay.innerText.includes("SUCCESS") ? "🟩" : "🟥";
-    navigator.clipboard.writeText(`Suffix Game ${today}\n${status} Word: ${currentWord}\nhttps://jakusmaximus.github.io/suffixes/`);
-    alert("Copied!");
+    const savedData = JSON.parse(localStorage.getItem('suffix_daily_state'));
+    const isWin = savedData.won;
+    const len = currentWord.length;
+    
+    // Build squares: All green if win, last one red if loss
+    let squares = "";
+    for(let i = 0; i < len; i++) {
+        if (!isWin && i === len - 1) {
+            squares += "🟥";
+        } else {
+            squares += "🟩";
+        }
+    }
+
+    const text = `Suffix Game ${today}\n${squares}\nWord: ${currentWord}\nhttps://jakusmaximus.github.io/suffixes/`;
+    navigator.clipboard.writeText(text);
+    alert("Shareable results copied to clipboard!");
 }
 
 window.onload = initGame;
