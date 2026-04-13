@@ -91,7 +91,17 @@ function handleKeyPress(key) {
 }
 
 function passTurn() {
-    if (!hasAddedLetterThisTurn) return;
+    // If the user hasn't added a letter yet...
+    if (!hasAddedLetterThisTurn) {
+        if (messageDisplay) {
+            messageDisplay.style.color = "orange"; // Give it a warning color
+            messageDisplay.innerText = "You must add a letter before passing!";
+        }
+        return; // Stop here and don't trigger the computer
+    }
+    
+    // Otherwise, proceed to the computer's turn
+    if (messageDisplay) messageDisplay.style.color = "black"; // Reset color
     triggerComputer();
 }
 
