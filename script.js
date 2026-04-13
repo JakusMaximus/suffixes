@@ -1,4 +1,4 @@
-const DICTIONARY_URL = "https://cdn.jsdelivr.net/gh/dwyl/english-words@master/words_dictionary.json";
+const DICTIONARY_URL = "https://raw.githubusercontent.com/dwyl/english-words/master/words_alpha.txt";
 let dictionary = [];
 let currentWord = "";
 let initialLength = 3; 
