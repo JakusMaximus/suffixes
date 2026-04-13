@@ -2,39 +2,52 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Suffixes - Daily Word Game</title>
-    <link rel="stylesheet" href="style.css?v=8.0">
+    <link rel="stylesheet" href="style.css?v=10.0">
 </head>
 <body>
 
     <div id="game-container">
         <header>
-            <h1>SUFFIXES</h1>
+            <div class="top-bar">
+                <button class="icon-btn" id="theme-toggle" onclick="toggleTheme()">🌓</button>
+                <h1>SUFFIXES</h1>
+                <button class="icon-btn" id="stats-toggle" onclick="showStats()">📊</button>
+            </div>
             <p id="date-display"></p>
         </header>
 
         <div id="main-stage">
             <div id="loading-display">Loading Dictionary...</div>
             <div id="instructions" style="display: none;">
-                Add a letter, then choose to <strong>Pass</strong> to the computer or <strong>Claim</strong> a valid word.
+                Add a letter, then <strong>Pass</strong> to the computer or <strong>Claim</strong> a valid word.
             </div>
             <div class="word-display" id="word-display" style="display: none;"></div>
+            <div id="solution-display"></div>
         </div>
         
         <div id="controls">
             <button class="btn-claim" id="claim-btn" onclick="claimWord()">Claim Word</button>
-            <button class="btn-pass" id="pass-btn" onclick="passTurn()">Pass to Computer</button>
-            <input type="text" id="letter-input" maxlength="1" style="opacity: 0; position: absolute; pointer-events: none;">
+            <button class="btn-pass" id="pass-btn" onclick="passTurn()">Pass Turn</button>
         </div>
 
         <div id="keyboard-container"></div>
 
         <p class="message" id="message"></p>
         
-        <button class="share-btn" id="share-btn" style="display: none;" onclick="shareResult()">Share Result ⎘</button>
+        <button class="share-btn" id="share-btn" onclick="shareResult()">Share Result ⎘</button>
     </div>
 
-    <script src="script.js?v=8.0"></script>
+    <div id="stats-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeStats()">&times;</span>
+            <h2 style="margin-top:0">Statistics</h2>
+            <div id="stats-body"></div>
+            <button class="btn-pass" style="margin-top:20px; width:100%" onclick="closeStats()">Close</button>
+        </div>
+    </div>
+
+    <script src="script.js?v=10.0"></script>
 </body>
 </html>
