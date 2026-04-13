@@ -72,6 +72,45 @@ button {
     min-height: 1.5em;
 }
 
+#keyboard-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+    margin-top: 20px;
+    user-select: none;
+}
+
+.keyboard-row {
+    display: flex;
+    gap: 4px;
+    touch-action: manipulation;
+}
+
+.key {
+    width: clamp(30px, 8vw, 45px);
+    height: 55px;
+    background-color: var(--border-color);
+    color: var(--text-color);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: background-color 0.1s;
+}
+
+.key:active {
+    background-color: #abb1ba;
+}
+
+/* Make the input field less prominent since we have a keyboard */
+#letter-input {
+    caret-color: transparent; /* Hides the blinking cursor */
+}
+
 .share-btn {
     margin-top: 20px;
     background-color: #007bff;
