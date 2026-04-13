@@ -40,12 +40,31 @@ body {
     align-items: center;
 }
 
+header {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Centers children of header */
+    margin-bottom: 5px;
+}
+
 .top-bar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    width: 300px;
-    margin-bottom: 5px;
+    width: 100%;
+    max-width: 320px; /* Slightly wider for better spacing */
+    margin: 0 auto;
+}
+
+/* Centering the Date Display */
+#date-display {
+    text-align: center;
+    width: 100%;
+    margin: 8px 0;
+    color: #6c757d;
+    font-size: 0.9rem;
+    font-weight: 500;
 }
 
 .icon-btn {
@@ -56,6 +75,8 @@ body {
     box-shadow: none;
     padding: 5px;
     color: var(--text-color);
+    display: flex;
+    align-items: center;
 }
 
 #main-stage {
@@ -90,7 +111,11 @@ body {
     min-height: 1.2em;
 }
 
-#controls { display: flex; gap: 10px; margin-bottom: 20px; }
+#controls { 
+    display: flex; 
+    gap: 10px; 
+    margin-bottom: 20px; 
+}
 
 button {
     padding: 12px 24px;
@@ -128,9 +153,22 @@ button:disabled {
     cursor: pointer;
 }
 
-.key-back { width: clamp(50px, 12vw, 65px); background-color: #adb5bd; }
+.key:active {
+    transform: translateY(2px);
+    border-bottom-width: 1px;
+}
 
-.message { font-weight: 600; margin: 15px 0; text-align: center; }
+.key-back { 
+    width: clamp(50px, 12vw, 65px); 
+    background-color: #adb5bd; 
+    color: white;
+}
+
+.message { 
+    font-weight: 600; 
+    margin: 15px 0; 
+    text-align: center; 
+}
 
 /* Modal Styling */
 .modal {
@@ -150,6 +188,7 @@ button:disabled {
     max-width: 320px;
     position: relative;
     box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    color: var(--text-color);
 }
 
 .close-btn {
@@ -159,6 +198,9 @@ button:disabled {
 }
 
 .share-btn { 
-    background: var(--accent-success); color: white; 
-    display: none; width: 220px; margin-top: 10px;
+    background: var(--accent-success); 
+    color: white; 
+    display: none; 
+    width: 220px; 
+    margin-top: 10px;
 }
