@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suffix - Daily Word Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="game-container">
+        <h1>SUFFIX</h1>
+        <p id="date-display"></p>
+        <div class="word-display" id="word-display">---</div>
+        
+        <div id="controls">
+            <div class="input-section">
+                <input type="text" id="letter-input" maxlength="1" autofocus>
+                <div class="button-group">
+                    <button class="btn-add" onclick="playerMove()">Add & Pass</button>
+                    <button class="btn-close" onclick="closeWord()">Close Word</button>
+                </div>
+            </div>
+        </div>
+
+        <p class="message" id="message"></p>
+        <button class="share-btn" id="share-btn" onclick="shareResult()">Share Result ⎘</button>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
