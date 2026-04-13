@@ -29,28 +29,35 @@ function setupDailyAutomatedGame() {
     const today = new Date();
     const dateSeed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
     
-    // Use the date as a seed for predictable randomness
     let seededRandom = Math.sin(dateSeed) * 10000;
     seededRandom = seededRandom - Math.floor(seededRandom);
 
-    // 1. Get all possible 3-letter starts from the dictionary
+    // 1. Get unique 3-letter starts
     const allStarts = dictionary.map(w => w.substring(0, 3)).filter(s => s.length === 3);
     const uniqueStarts = [...new Set(allStarts)];
 
-    // 2. Filter for starts that have at least 15 possible word outcomes
+    // 2. The "Common Rule" Filter
     const viableStarts = uniqueStarts.filter(start => {
-        const routes = dictionary.filter(w => w.startsWith(start)).length;
-        return routes >= 15; // You can change this number to make it harder/easier
+        const wordsWithStart = dictionary.filter(w => w.startsWith(start));
+        
+        // RULE A: Must have at least 20 possible routes
+        const hasEnoughRoutes = wordsWithStart.length >= 20;
+        
+        // RULE B: Must lead to at least one "Common-length" word (4-7 letters)
+        // This usually filters out highly technical or obscure prefixes
+        const leadsToCommonWord = wordsWithStart.some(w => w.length >= 4 && w.length <= 7);
+        
+        return hasEnoughRoutes && leadsToCommonWord;
     });
 
-    // 3. Pick one based on our seeded random number
+    // 3. Pick the starter
     const finalIndex = Math.floor(seededRandom * viableStarts.length);
     currentWord = viableStarts[finalIndex];
 
     // 4. Update UI
     dateDisplay.innerText = today.toDateString();
     wordDisplay.innerText = currentWord;
-    messageDisplay.innerText = "Game Ready! Add a letter.";
+    messageDisplay.innerText = "Daily Challenge Loaded! Your turn.";
     inputField.disabled = false;
     inputField.focus();
 }
