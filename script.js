@@ -1,5 +1,5 @@
 // The "Brain" of the Suffix Game
-const DICTIONARY_URL = "https://raw.githubusercontent.com/first20hours/google-10000-english/master/google-10000-english-no-swears.txt";
+const DICTIONARY_URL = "https://raw.githubusercontent.com/dwyl/english-words/master/words_alpha.txt";
 
 let dictionary = [];
 const dailyStarters = ["STR", "CON", "EXT", "PRE", "INT", "PRO", "REH", "TRA", "INC", "COM"];
