@@ -101,14 +101,31 @@ function triggerComputer() {
     if (claimBtn) claimBtn.disabled = true;
 
     setTimeout(() => {
+        // 1. Find all words that start with the current string
         const possibilities = dictionary.filter(w => w.startsWith(currentWord) && w.length > currentWord.length);
         
         if (possibilities.length > 0) {
-            const nextLetters = [...new Set(possibilities.map(w => w[currentWord.length]))].sort();
-            const seedShift = currentWord.length; 
-            const letterIndex = Math.floor(getSeededRandom(seedShift) * nextLetters.length);
+            // 2. Sort by length (shortest first) then alphabetically
+            // This ensures the computer prefers common/short words
+            possibilities.sort((a, b) => {
+                if (a.length !== b.length) {
+                    return a.length - b.length;
+                }
+                return a.localeCompare(b);
+            });
+
+            // 3. To keep it fair for everyone, we pick from the top "shortest" options 
+            // but use the seed so the choice is identical for everyone today.
+            const shortestLength = possibilities[0].length;
+            const shortestOptions = possibilities.filter(w => w.length === shortestLength);
             
-            currentWord += nextLetters[letterIndex];
+            // Use seed + word length to pick from the shortest options
+            const seedShift = currentWord.length; 
+            const index = Math.floor(getSeededRandom(seedShift) * shortestOptions.length);
+            const chosenWord = shortestOptions[index];
+            
+            // 4. Update the word with just the NEXT letter
+            currentWord += chosenWord[currentWord.length];
             wordDisplay.innerText = currentWord;
             
             hasAddedLetterThisTurn = false;
