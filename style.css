@@ -3,8 +3,6 @@
     --text-color: #212529;
     --accent-success: #198754;
     --accent-primary: #0d6efd;
-    --accent-error: #dc3545;
-    --accent-warning: #ff9800;
     --key-bg: #ffffff;
     --key-border: #dee2e6;
     --shadow: 0 4px 6px rgba(0,0,0,0.05);
@@ -18,7 +16,7 @@ body {
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    touch-action: manipulation; /* Prevents accidental zooming on mobile */
+    touch-action: manipulation;
 }
 
 #game-container {
@@ -28,13 +26,10 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    position: relative;
 }
 
-header { text-align: center; margin-bottom: 10px; }
-
 #main-stage {
-    height: 160px; /* Increased slightly for better spacing */
+    height: 160px;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -43,28 +38,18 @@ header { text-align: center; margin-bottom: 10px; }
     width: 100%;
 }
 
-#loading-display { color: var(--accent-primary); font-weight: bold; }
-
-#instructions {
-    font-size: 0.9rem;
-    color: #6c757d;
-    margin-bottom: 15px;
-    max-width: 80%;
-}
-
 .word-display {
     font-size: clamp(2.5rem, 10vw, 3.5rem);
     font-weight: 800;
     letter-spacing: 4px;
     text-transform: uppercase;
-    color: var(--text-color);
+    margin: 10px 0;
 }
 
 #controls {
     display: flex;
-    gap: 12px;
-    margin: 20px 0;
-    z-index: 10; /* Ensures buttons are above hidden inputs */
+    gap: 10px;
+    margin-bottom: 20px;
 }
 
 button {
@@ -75,67 +60,55 @@ button {
     cursor: pointer;
     box-shadow: var(--shadow);
     transition: all 0.2s ease;
-    text-transform: uppercase;
-    font-size: 0.9rem;
 }
 
-/* Button States */
-button:active { transform: translateY(2px); box-shadow: none; }
-
-/* CRITICAL: Visual feedback for disabled buttons */
 button:disabled {
     background-color: #ced4da !important;
     color: #6c757d !important;
     cursor: not-allowed;
-    box-shadow: none;
     opacity: 0.6;
+    box-shadow: none;
 }
 
 .btn-claim { background: var(--text-color); color: white; }
 .btn-pass { background: var(--accent-primary); color: white; }
 
-#keyboard-container { 
-    display: flex; 
-    flex-direction: column; 
-    gap: 8px; 
-    width: 100%; 
-    margin-top: 10px;
-}
-
-.keyboard-row { display: flex; justify-content: center; gap: 6px; }
+#keyboard-container { width: 100%; display: flex; flex-direction: column; gap: 8px; }
+.keyboard-row { display: flex; justify-content: center; gap: 5px; }
 
 .key {
     background: var(--key-bg);
     border: 1px solid var(--key-border);
     border-bottom: 3px solid var(--key-border);
     border-radius: 6px;
-    width: clamp(32px, 9vw, 42px);
+    width: clamp(32px, 8vw, 42px);
     height: 54px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 700;
+    font-weight: bold;
     cursor: pointer;
     user-select: none;
-    transition: background 0.1s;
 }
 
 .key:active {
-    background: #e9ecef;
-    border-bottom-width: 1px;
     transform: translateY(2px);
+    border-bottom-width: 1px;
 }
 
-.message { 
-    font-weight: 600; 
-    margin: 20px 0; 
-    text-align: center; 
-    min-height: 1.5em; /* Prevents layout jump when text appears */
+/* Wider style for the Backspace key */
+.key-back {
+    width: clamp(50px, 12vw, 65px);
+    background-color: #e9ecef;
+    font-size: 1.2rem;
 }
+
+.message { font-weight: 600; margin-top: 15px; text-align: center; min-height: 1.5em; }
 
 .share-btn { 
     background: var(--accent-success); 
     color: white; 
-    margin-top: 10px;
-    width: 80%;
+    display: none; 
+    margin-top: 20px; 
+    width: 200px;
 }
