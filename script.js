@@ -4,9 +4,10 @@ let currentWord = "";
 let dailySeedValue = 0; 
 const today = new Date().toDateString();
 
+// Control variable to enforce one-letter-per-turn
 let hasAddedLetterThisTurn = false;
 
-// We declare these globally but don't assign them until the page is ready
+// Global element references
 let wordDisplay, loadingDisplay, instructions, messageDisplay, passBtn, claimBtn;
 
 // --- SEED UTILITY ---
@@ -16,24 +17,18 @@ function getSeededRandom(additionalShift = 0) {
     return val < 0 ? val + 1 : val;
 }
 
-// THIS IS THE FIX: Wait for the HTML to be 100% loaded
+// Ensure DOM is ready before running
 document.addEventListener('DOMContentLoaded', () => {
     initGame();
 });
 
 async function initGame() {
-    // Now that the DOM is ready, we grab the elements
     wordDisplay = document.getElementById('word-display');
     loadingDisplay = document.getElementById('loading-display');
     instructions = document.getElementById('instructions');
     messageDisplay = document.getElementById('message');
     passBtn = document.getElementById('pass-btn');
     claimBtn = document.getElementById('claim-btn');
-
-    // Double check that we actually found the claim button
-    if (!claimBtn) {
-        console.error("CRITICAL ERROR: Button with ID 'claim-btn' not found in HTML.");
-    }
 
     const savedData = JSON.parse(localStorage.getItem('suffix_daily_state'));
     createKeyboard();
@@ -44,6 +39,7 @@ async function initGame() {
     try {
         const response = await fetch(DICTIONARY_URL);
         const data = await response.json();
+        // Standardize dictionary
         dictionary = Object.keys(data).map(w => w.toUpperCase()).filter(w => w.length > 2);
 
         if (loadingDisplay) loadingDisplay.style.display = 'none';
@@ -56,7 +52,7 @@ async function initGame() {
             setupDailyGame();
         }
     } catch (e) {
-        if (loadingDisplay) loadingDisplay.innerText = "Load Error. Please refresh.";
+        if (loadingDisplay) loadingDisplay.innerText = "Load Error. Refresh.";
     }
 }
 
@@ -69,11 +65,11 @@ function setupDailyGame() {
     const startIndex = Math.floor(getSeededRandom(0) * viable.length);
     currentWord = viable[startIndex];
     
-    const dateEl = document.getElementById('date-display');
-    if (dateEl) dateEl.innerText = today;
-    if (wordDisplay) wordDisplay.innerText = currentWord;
+    document.getElementById('date-display').innerText = today;
+    wordDisplay.innerText = currentWord;
+    messageDisplay.innerText = "Your turn! Add one letter.";
     
-    // Lock buttons until player types
+    // Initial state: Buttons locked until player types
     if (passBtn) passBtn.disabled = true;
     if (claimBtn) claimBtn.disabled = true;
 }
@@ -82,7 +78,7 @@ function handleKeyPress(key) {
     if (hasAddedLetterThisTurn) return;
 
     if (instructions) instructions.style.display = 'none';
-    const tempWord = currentWord + key;
+    const tempWord = (currentWord + key).toUpperCase();
     const exists = dictionary.some(w => w.startsWith(tempWord));
     
     if (!exists) {
@@ -92,32 +88,32 @@ function handleKeyPress(key) {
     } else {
         currentWord = tempWord;
         wordDisplay.innerText = currentWord;
-        hasAddedLetterThisTurn = true; 
+        hasAddedLetterThisTurn = true; // Lock keyboard
         
         // UNLOCK BUTTONS
         if (passBtn) passBtn.disabled = false;
         if (claimBtn) claimBtn.disabled = false;
-        if (messageDisplay) messageDisplay.innerText = "Letter added! Claim or Pass.";
+        messageDisplay.innerText = "Letter added! Claim Word or Pass Turn.";
     }
 }
 
 function passTurn() {
-    if (!hasAddedLetterThisTurn) {
-        if (messageDisplay) messageDisplay.innerText = "Add a letter first!";
-        return;
-    }
+    if (!hasAddedLetterThisTurn) return;
     triggerComputer();
 }
 
 function triggerComputer() {
-    if (messageDisplay) messageDisplay.innerText = "Computer is thinking...";
+    messageDisplay.innerText = "Computer is thinking...";
+    // Lock everything during computer turn
     if (passBtn) passBtn.disabled = true;
     if (claimBtn) claimBtn.disabled = true;
+    hasAddedLetterThisTurn = true; 
 
     setTimeout(() => {
         const possibilities = dictionary.filter(w => w.startsWith(currentWord) && w.length > currentWord.length);
         
         if (possibilities.length > 0) {
+            // Pick shortest word path
             possibilities.sort((a, b) => (a.length - b.length) || a.localeCompare(b));
             const shortestLen = possibilities[0].length;
             const shortestOptions = possibilities.filter(w => w.length === shortestLen);
@@ -126,33 +122,32 @@ function triggerComputer() {
             const index = Math.floor(getSeededRandom(seedShift) * shortestOptions.length);
             const chosenWord = shortestOptions[index];
             
-            currentWord += chosenWord[currentWord.length];
+            currentWord += chosenWord[currentWord.length].toUpperCase();
             wordDisplay.innerText = currentWord;
             
-            hasAddedLetterThisTurn = false;
-            if (messageDisplay) messageDisplay.innerText = "Computer moved. Your turn!";
+            // --- THE FIX ---
+            // Allow the player to claim the computer's word immediately
+            hasAddedLetterThisTurn = false; 
+            if (passBtn) passBtn.disabled = true; // Still need to add a letter to pass back
+            if (claimBtn) claimBtn.disabled = false; // BUT you can claim what the computer just did!
+            messageDisplay.innerText = "Computer moved. Add a letter or Claim!";
         } else {
-            if (messageDisplay) messageDisplay.innerText = "Computer is stuck! You win!";
+            messageDisplay.innerText = "Computer is stuck! You win!";
             endGame(true);
         }
     }, 800);
 }
 
 function claimWord() {
-    // This is the core logic for the button
     const isValid = dictionary.includes(currentWord.toUpperCase());
     
     if (isValid) {
-        if (messageDisplay) {
-            messageDisplay.style.color = "green";
-            messageDisplay.innerText = `WIN! "${currentWord}" is a word.`;
-        }
+        messageDisplay.style.color = "green";
+        messageDisplay.innerText = `SUCCESS! "${currentWord}" is a word.`;
         endGame(true);
     } else {
-        if (messageDisplay) {
-            messageDisplay.style.color = "red";
-            messageDisplay.innerText = `LOSS! "${currentWord}" is not a word.`;
-        }
+        messageDisplay.style.color = "red";
+        messageDisplay.innerText = `FAILED! "${currentWord}" is not a word.`;
         endGame(false);
     }
 }
@@ -161,7 +156,11 @@ function createKeyboard() {
     const container = document.getElementById('keyboard-container');
     if (!container) return;
     container.innerHTML = ''; 
-    const ROWS = [["Q","W","E","R","T","Y","U","I","O","P"],["A","S","D","F","G","H","J","K","L"],["Z","X","C","V","B","N","M"]];
+    const ROWS = [
+        ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
+        ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
+        ["Z", "X", "C", "V", "B", "N", "M"]
+    ];
 
     ROWS.forEach(row => {
         const rowDiv = document.createElement('div');
@@ -179,29 +178,30 @@ function createKeyboard() {
 
 function endGame(won, alreadyPlayed = false) {
     hasAddedLetterThisTurn = true; 
-    document.getElementById('controls').style.display = 'none';
-    document.getElementById('keyboard-container').style.display = 'none';
-    document.getElementById('share-btn').style.display = 'inline-block';
+    const controls = document.getElementById('controls');
+    const keyboard = document.getElementById('keyboard-container');
+    const share = document.getElementById('share-btn');
+
+    if (controls) controls.style.display = 'none';
+    if (keyboard) keyboard.style.display = 'none';
+    if (share) share.style.display = 'inline-block';
+
     if (!alreadyPlayed) {
         localStorage.setItem('suffix_daily_state', JSON.stringify({date: today, word: currentWord, won: won}));
     }
 }
 
 function gameOver(msg) {
-    if (messageDisplay) {
-        messageDisplay.style.color = "red";
-        messageDisplay.innerText = msg;
-    }
+    messageDisplay.style.color = "red";
+    messageDisplay.innerText = msg;
     endGame(false);
 }
 
 function displaySavedGame(data) {
     currentWord = data.word;
     wordDisplay.innerText = currentWord;
-    if (messageDisplay) {
-        messageDisplay.style.color = data.won ? "green" : "red";
-        messageDisplay.innerText = data.won ? `Result: SUCCESS (${currentWord})` : `Result: FAILED (${currentWord})`;
-    }
+    messageDisplay.style.color = data.won ? "green" : "red";
+    messageDisplay.innerText = data.won ? `Result: SUCCESS (${currentWord})` : `Result: FAILED (${currentWord})`;
     endGame(data.won, true);
 }
 
