@@ -1,12 +1,10 @@
 // The "Brain" of the Suffix Game
-// Middle-ground dictionary (~100k words)
 const DICTIONARY_URL = "https://raw.githubusercontent.com/dwyl/english-words/master/words_dictionary.json";
 
 let dictionary = [];
 let currentWord = "";
 const today = new Date().toDateString();
 
-// Keyboard layout
 const ROWS = [
     ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
     ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
@@ -21,7 +19,7 @@ const controls = document.getElementById('controls');
 
 async function initGame() {
     if (wordDisplay) wordDisplay.innerText = "WAIT";
-    if (messageDisplay) messageDisplay.innerText = "Loading Suffixes...";
+    if (messageDisplay) messageDisplay.innerText = "Downloading Dictionary...";
 
     const savedData = JSON.parse(localStorage.getItem('suffix_daily_state'));
 
@@ -33,7 +31,7 @@ async function initGame() {
         const response = await fetch(DICTIONARY_URL);
         const data = await response.json();
         
-        // This dictionary is a JSON object, so we get the keys (the words)
+        // This dictionary is a JSON object. We take the keys and make them an array.
         dictionary = Object.keys(data)
                            .map(word => word.toUpperCase())
                            .filter(word => word.length > 2);
@@ -44,7 +42,9 @@ async function initGame() {
             setupDailyAutomatedGame();
         }
     } catch (error) {
-        if (messageDisplay) messageDisplay.innerText = "Connection error. Refresh!";
+        if (wordDisplay) wordDisplay.innerText = "ERR";
+        if (messageDisplay) messageDisplay.innerText = "Connection error. Please refresh.";
+        console.error(error);
     }
 }
 
@@ -55,14 +55,13 @@ function setupDailyAutomatedGame() {
     let seededRandom = Math.sin(dateSeed) * 10000;
     seededRandom = seededRandom - Math.floor(seededRandom);
 
-    // Filter starters that are very common in this larger dictionary
+    // Filter for popular 3-letter starts (appear in 150+ words)
     const allStarts = dictionary.map(w => w.substring(0, 3)).filter(s => s.length === 3);
     const counts = {};
     allStarts.forEach(s => counts[s] = (counts[s] || 0) + 1);
 
-    // With a 100k dictionary, common starters have 100+ routes
     const viableStarts = Object.keys(counts).filter(start => {
-        return counts[start] >= 100 && /[AEIOUY]/.test(start);
+        return counts[start] >= 150 && /[AEIOUY]/.test(start);
     });
 
     const finalIndex = Math.floor(seededRandom * viableStarts.length);
@@ -70,7 +69,7 @@ function setupDailyAutomatedGame() {
 
     if (dateDisplay) dateDisplay.innerText = today;
     if (wordDisplay) wordDisplay.innerText = currentWord;
-    if (messageDisplay) messageDisplay.innerText = "Middle-ground dictionary loaded. Your turn!";
+    if (messageDisplay) messageDisplay.innerText = "Your turn! Add a letter.";
     
     if (inputField) {
         inputField.disabled = false;
@@ -78,7 +77,6 @@ function setupDailyAutomatedGame() {
     }
 }
 
-// 3. Gameplay Logic
 function playerMove() {
     const letter = inputField.value.toUpperCase();
     if (!/^[A-Z]$/.test(letter)) return;
@@ -90,7 +88,7 @@ function playerMove() {
     const possible = dictionary.some(w => w.startsWith(currentWord));
     
     if (!possible) {
-        gameOver(`Game Over! No common words start with "${currentWord}".`);
+        gameOver(`Game Over! No words start with "${currentWord}".`);
         return;
     }
 
@@ -102,7 +100,7 @@ function computerMove() {
     const possibilities = dictionary.filter(w => w.startsWith(currentWord) && w.length > currentWord.length);
     
     if (possibilities.length > 0) {
-        possibilities.sort((a, b) => a.length - b.length); // Pick shortest word
+        possibilities.sort((a, b) => a.length - b.length);
         const target = possibilities[0];
         
         const nextLetter = target[currentWord.length];
@@ -124,12 +122,11 @@ function closeWord() {
         endGame(true);
     } else {
         messageDisplay.style.color = "red";
-        messageDisplay.innerText = `FAILED! "${currentWord}" is not a word.`;
+        messageDisplay.innerText = `FAILED! "${currentWord}" is not in the dictionary.`;
         endGame(false);
     }
 }
 
-// 4. UI Functions
 function createKeyboard() {
     const container = document.getElementById('keyboard-container');
     if (!container) return;
@@ -163,8 +160,8 @@ function displaySavedGame(data) {
     if (messageDisplay) {
         messageDisplay.style.color = data.won ? "green" : "red";
         messageDisplay.innerText = data.won ? 
-            `Daily Complete! SUCCESS: ${currentWord}` : 
-            `Daily Complete! FAILED: ${currentWord}`;
+            `Daily Result: SUCCESS (${currentWord})` : 
+            `Daily Result: FAILED (${currentWord})`;
     }
     
     if (controls) controls.style.display = 'none';
@@ -186,11 +183,11 @@ function endGame(won) {
         word: currentWord,
         won: won
     };
-    localStorage.setItem('suffixes_daily_state', JSON.stringify(gameState));
+    localStorage.setItem('suffix_daily_state', JSON.stringify(gameState));
 
     const longer = dictionary.find(w => w.startsWith(currentWord) && w.length > currentWord.length);
     if (won && longer) {
-        messageDisplay.innerText += `\nCould have gone to: ${longer}`;
+        messageDisplay.innerText += `\nKeep going? "${longer}" was possible!`;
     }
 }
 
@@ -202,12 +199,11 @@ function gameOver(msg) {
 
 function shareResult() {
     const status = messageDisplay.innerText.includes("SUCCESS") ? "🟩" : "🟥";
-    const text = `Suffixes Game ${today}\n${status} Word: ${currentWord}\nhttps://jakusmaximus.github.io/suffixes/`;
+    const text = `Suffix Game ${today}\n${status} Word: ${currentWord}\nhttps://jakusmaximus.github.io/suffixes/`;
     navigator.clipboard.writeText(text);
-    alert("Copied to clipboard!");
+    alert("Result copied!");
 }
 
-// Physical keyboard support for Enter
 inputField.addEventListener("keypress", (e) => {
     if (e.key === "Enter") {
         e.preventDefault();
@@ -215,5 +211,4 @@ inputField.addEventListener("keypress", (e) => {
     }
 });
 
-// Run when page is loaded
 window.onload = initGame;
