@@ -20,14 +20,15 @@ const passBtn = document.getElementById('pass-btn');
 
 async function initGame() {
     createKeyboard();
-    const savedData = JSON.parse(localStorage.getItem('suffix_daily_state'));
-
     try {
         const response = await fetch(DICTIONARY_URL);
-        if (!response.ok) throw new Error("Dictionary download failed");
+        if (!response.ok) throw new Error("Download failed");
         
-        const data = await response.json();
-        dictionary = Object.keys(data).map(w => w.toUpperCase()).filter(w => w.length > 2);
+        const text = await response.text();
+        // Split by newline, trim whitespace, and filter
+        dictionary = text.split('\n')
+                         .map(w => w.trim().toUpperCase())
+                         .filter(w => w.length > 2);
 
         loadingDisplay.style.display = 'none';
         wordDisplay.style.display = 'block';
