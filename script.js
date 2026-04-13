@@ -30,7 +30,7 @@ async function initGame() {
     inputField.disabled = true; 
     
     const savedData = JSON.parse(localStorage.getItem('suffix_daily_state'));
-    
+    createKeyboard();
     try {
         const response = await fetch(DICTIONARY_URL);
         const text = await response.text();
@@ -116,6 +116,7 @@ function closeWord() {
         messageDisplay.style.color = "green";
         messageDisplay.innerText = `SUCCESS! "${currentWord}" is a word.`;
         endGame(true);
+        document.getElementById('keyboard-container').style.display = 'none';
     } else {
         messageDisplay.style.color = "red";
         messageDisplay.innerText = `FAILED! "${currentWord}" is not in the dictionary.`;
