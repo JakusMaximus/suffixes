@@ -1,14 +1,10 @@
 const DICTIONARY_URL = "https://raw.githubusercontent.com/dwyl/english-words/master/words_dictionary.json";
 let dictionary = [];
 let currentWord = "";
-let initialLength = 3; // To track how many squares we need
 const today = new Date().toDateString();
 
-const ROWS = [
-    ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
-    ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
-    ["Z", "X", "C", "V", "B", "N", "M"]
-];
+// Control variables for turn-based logic
+let hasAddedLetterThisTurn = false;
 
 const wordDisplay = document.getElementById('word-display');
 const loadingDisplay = document.getElementById('loading-display');
@@ -16,6 +12,7 @@ const instructions = document.getElementById('instructions');
 const messageDisplay = document.getElementById('message');
 const inputField = document.getElementById('letter-input');
 const passBtn = document.getElementById('pass-btn');
+const claimBtn = document.getElementById('claim-btn'); // Ensure this ID exists in your HTML
 
 async function initGame() {
     const savedData = JSON.parse(localStorage.getItem('suffix_daily_state'));
@@ -24,6 +21,7 @@ async function initGame() {
     try {
         const response = await fetch(DICTIONARY_URL);
         const data = await response.json();
+        // Filter for words > 2 letters and capitalize
         dictionary = Object.keys(data).map(w => w.toUpperCase()).filter(w => w.length > 2);
 
         loadingDisplay.style.display = 'none';
@@ -36,70 +34,119 @@ async function initGame() {
             setupDailyGame();
         }
     } catch (e) {
-        loadingDisplay.innerText = "Load Error. Refresh.";
+        loadingDisplay.innerText = "Load Error. Please refresh.";
     }
 }
 
 function setupDailyGame() {
     const now = new Date();
+    // Improved seeded random to avoid negative numbers
     const dateSeed = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
-    let seededRandom = Math.sin(dateSeed) * 10000;
-    seededRandom = seededRandom - Math.floor(seededRandom);
+    let x = Math.sin(dateSeed) * 10000;
+    let seededRandom = x - Math.floor(x);
+    if (seededRandom < 0) seededRandom += 1;
 
+    // Find viable 3-letter starts
     const allStarts = dictionary.map(w => w.substring(0, 3)).filter(s => s.length === 3);
     const counts = {};
     allStarts.forEach(s => counts[s] = (counts[s] || 0) + 1);
     const viable = Object.keys(counts).filter(s => counts[s] >= 150 && /[AEIOUY]/.test(s));
 
     currentWord = viable[Math.floor(seededRandom * viable.length)];
-    initialLength = currentWord.length; 
+    
     document.getElementById('date-display').innerText = today;
     wordDisplay.innerText = currentWord;
-    messageDisplay.innerText = "Your turn! Add a letter.";
+    messageDisplay.innerText = "Your turn! Add one letter.";
+    
+    // Initial UI State
+    passBtn.disabled = true;
+    claimBtn.disabled = true;
 }
 
 function handleKeyPress(key) {
-    if (inputField.disabled) return;
+    // Prevent adding more than one letter per turn
+    if (hasAddedLetterThisTurn) {
+        messageDisplay.innerText = "You already added a letter! Claim or Pass.";
+        return;
+    }
+
     instructions.style.display = 'none';
-    currentWord += key;
-    wordDisplay.innerText = currentWord;
+    const tempWord = currentWord + key;
+
+    // Check if the move is legal (does it lead to any word?)
+    const exists = dictionary.some(w => w.startsWith(tempWord));
     
-    if (!dictionary.some(w => w.startsWith(currentWord))) {
+    if (!exists) {
+        currentWord = tempWord;
+        wordDisplay.innerText = currentWord;
         gameOver(`Bricked! No words start with "${currentWord}".`);
     } else {
-        messageDisplay.innerText = "Letter added. Claim Word or Pass Turn.";
+        currentWord = tempWord;
+        wordDisplay.innerText = currentWord;
+        hasAddedLetterThisTurn = true;
+        
+        // Enable choices
+        passBtn.disabled = false;
+        claimBtn.disabled = false;
+        messageDisplay.innerText = "Letter added! Now Claim Word or Pass Turn.";
     }
 }
 
 function triggerComputer() {
     messageDisplay.innerText = "Computer is thinking...";
-    inputField.disabled = true;
+    // Lock UI during computer turn
+    hasAddedLetterThisTurn = true; 
     passBtn.disabled = true;
+    claimBtn.disabled = true;
 
     setTimeout(() => {
         const possibilities = dictionary.filter(w => w.startsWith(currentWord) && w.length > currentWord.length);
+        
         if (possibilities.length > 0) {
-            possibilities.sort((a, b) => a.length - b.length);
-            currentWord += possibilities[0][currentWord.length];
+            // Computer picks a random valid next letter from all possible words
+            const nextLetters = [...new Set(possibilities.map(w => w[currentWord.length]))];
+            const randomLetter = nextLetters[Math.floor(Math.random() * nextLetters.length)];
+            
+            currentWord += randomLetter;
             wordDisplay.innerText = currentWord;
-            messageDisplay.innerText = "Computer moved. Your turn!";
+            
+            // Hand control back to player
+            hasAddedLetterThisTurn = false;
+            messageDisplay.innerText = "Computer moved. Your turn! Add a letter.";
         } else {
-            messageDisplay.innerText = "Computer is stuck! Your turn.";
+            // This shouldn't happen often if dictionary is consistent
+            messageDisplay.innerText = "Computer is stuck! You win!";
+            endGame(true);
         }
-        inputField.disabled = false;
-        passBtn.disabled = false;
-    }, 600);
+    }, 800);
 }
 
 function claimWord() {
     const isValid = dictionary.includes(currentWord);
-    messageDisplay.style.color = isValid ? "green" : "red";
-    messageDisplay.innerText = isValid ? `SUCCESS! "${currentWord}" is a word.` : `FAILED! "${currentWord}" is not a word.`;
-    endGame(isValid);
+    if (isValid) {
+        messageDisplay.style.color = "green";
+        messageDisplay.innerText = `SUCCESS! "${currentWord}" is a word.`;
+        endGame(true);
+    } else {
+        messageDisplay.style.color = "red";
+        messageDisplay.innerText = `FAILED! "${currentWord}" is not a dictionary word yet.`;
+        endGame(false);
+    }
+}
+
+function passTurn() {
+    if (!hasAddedLetterThisTurn) return;
+    triggerComputer();
 }
 
 function createKeyboard() {
     const container = document.getElementById('keyboard-container');
+    const ROWS = [
+        ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
+        ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
+        ["Z", "X", "C", "V", "B", "N", "M"]
+    ];
+
     ROWS.forEach(row => {
         const rowDiv = document.createElement('div');
         rowDiv.className = 'keyboard-row';
@@ -115,7 +162,7 @@ function createKeyboard() {
 }
 
 function endGame(won, alreadyPlayed = false) {
-    inputField.disabled = true;
+    hasAddedLetterThisTurn = true; // Block further typing
     document.getElementById('controls').style.display = 'none';
     document.getElementById('keyboard-container').style.display = 'none';
     document.getElementById('share-btn').style.display = 'inline-block';
@@ -140,22 +187,24 @@ function displaySavedGame(data) {
 
 function shareResult() {
     const savedData = JSON.parse(localStorage.getItem('suffix_daily_state'));
+    if(!savedData) return;
+    
     const isWin = savedData.won;
     const len = currentWord.length;
     
-    // Build squares: All green if win, last one red if loss
     let squares = "";
     for(let i = 0; i < len; i++) {
-        if (!isWin && i === len - 1) {
-            squares += "🟥";
-        } else {
-            squares += "🟩";
-        }
+        squares += (i === len - 1 && !isWin) ? "🟥" : "🟩";
     }
 
     const text = `Suffix Game ${today}\n${squares}\nhttps://jakusmaximus.github.io/suffixes/`;
-    navigator.clipboard.writeText(text);
-    alert("Shareable results copied to clipboard!");
+    navigator.clipboard.writeText(text).then(() => {
+        alert("Results copied to clipboard!");
+    });
 }
+
+// Attach event listeners to buttons
+passBtn.onclick = passTurn;
+claimBtn.onclick = claimWord;
 
 window.onload = initGame;
