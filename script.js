@@ -1,5 +1,5 @@
 // The "Brain" of the Suffix Game
-const DICTIONARY_URL = "https://raw.githubusercontent.com/dwyl/english-words/master/words_alpha.txt";
+const DICTIONARY_URL = "https://raw.githubusercontent.com/dwyl/english-words/master/words.txt";
 
 let dictionary = [];
 const dailyStarters = ["STR", "CON", "EXT", "PRE", "INT", "PRO", "REH", "TRA", "INC", "COM"];
