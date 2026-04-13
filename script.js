@@ -1,27 +1,36 @@
 const DICTIONARY_URL = "https://raw.githubusercontent.com/dwyl/english-words/master/words_dictionary.json";
 let dictionary = [];
 let currentWord = "";
+let dailySeedValue = 0; // Global seed for consistency
 const today = new Date().toDateString();
 
-// Control variables for turn-based logic
 let hasAddedLetterThisTurn = false;
 
 const wordDisplay = document.getElementById('word-display');
 const loadingDisplay = document.getElementById('loading-display');
 const instructions = document.getElementById('instructions');
 const messageDisplay = document.getElementById('message');
-const inputField = document.getElementById('letter-input');
 const passBtn = document.getElementById('pass-btn');
-const claimBtn = document.getElementById('claim-btn'); // Ensure this ID exists in your HTML
+const claimBtn = document.getElementById('claim-btn');
+
+// --- SEED UTILITY ---
+// This ensures "random" choices are the same for everyone today
+function getSeededRandom(additionalShift = 0) {
+    let x = Math.sin(dailySeedValue + additionalShift) * 10000;
+    return x - Math.floor(x) < 0 ? (x - Math.floor(x)) + 1 : x - Math.floor(x);
+}
 
 async function initGame() {
     const savedData = JSON.parse(localStorage.getItem('suffix_daily_state'));
     createKeyboard();
 
+    // Generate the base seed once based on the date
+    const now = new Date();
+    dailySeedValue = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
+
     try {
         const response = await fetch(DICTIONARY_URL);
         const data = await response.json();
-        // Filter for words > 2 letters and capitalize
         dictionary = Object.keys(data).map(w => w.toUpperCase()).filter(w => w.length > 2);
 
         loadingDisplay.style.display = 'none';
@@ -39,41 +48,29 @@ async function initGame() {
 }
 
 function setupDailyGame() {
-    const now = new Date();
-    // Improved seeded random to avoid negative numbers
-    const dateSeed = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
-    let x = Math.sin(dateSeed) * 10000;
-    let seededRandom = x - Math.floor(x);
-    if (seededRandom < 0) seededRandom += 1;
-
-    // Find viable 3-letter starts
+    // 1. Get viable starts
     const allStarts = dictionary.map(w => w.substring(0, 3)).filter(s => s.length === 3);
     const counts = {};
     allStarts.forEach(s => counts[s] = (counts[s] || 0) + 1);
     const viable = Object.keys(counts).filter(s => counts[s] >= 150 && /[AEIOUY]/.test(s));
 
-    currentWord = viable[Math.floor(seededRandom * viable.length)];
+    // 2. Pick starting word using the seed (Same for everyone)
+    const startIndex = Math.floor(getSeededRandom(0) * viable.length);
+    currentWord = viable[startIndex];
     
     document.getElementById('date-display').innerText = today;
     wordDisplay.innerText = currentWord;
     messageDisplay.innerText = "Your turn! Add one letter.";
     
-    // Initial UI State
     passBtn.disabled = true;
     claimBtn.disabled = true;
 }
 
 function handleKeyPress(key) {
-    // Prevent adding more than one letter per turn
-    if (hasAddedLetterThisTurn) {
-        messageDisplay.innerText = "You already added a letter! Claim or Pass.";
-        return;
-    }
+    if (hasAddedLetterThisTurn) return;
 
     instructions.style.display = 'none';
     const tempWord = currentWord + key;
-
-    // Check if the move is legal (does it lead to any word?)
     const exists = dictionary.some(w => w.startsWith(tempWord));
     
     if (!exists) {
@@ -84,17 +81,14 @@ function handleKeyPress(key) {
         currentWord = tempWord;
         wordDisplay.innerText = currentWord;
         hasAddedLetterThisTurn = true;
-        
-        // Enable choices
         passBtn.disabled = false;
         claimBtn.disabled = false;
-        messageDisplay.innerText = "Letter added! Now Claim Word or Pass Turn.";
+        messageDisplay.innerText = "Letter added! Claim or Pass.";
     }
 }
 
 function triggerComputer() {
     messageDisplay.innerText = "Computer is thinking...";
-    // Lock UI during computer turn
     hasAddedLetterThisTurn = true; 
     passBtn.disabled = true;
     claimBtn.disabled = true;
@@ -103,18 +97,20 @@ function triggerComputer() {
         const possibilities = dictionary.filter(w => w.startsWith(currentWord) && w.length > currentWord.length);
         
         if (possibilities.length > 0) {
-            // Computer picks a random valid next letter from all possible words
-            const nextLetters = [...new Set(possibilities.map(w => w[currentWord.length]))];
-            const randomLetter = nextLetters[Math.floor(Math.random() * nextLetters.length)];
+            // Sort to ensure the list is in the same order for everyone
+            const nextLetters = [...new Set(possibilities.map(w => w[currentWord.length]))].sort();
             
-            currentWord += randomLetter;
+            // Use the seed + word length to pick the letter. 
+            // This ensures the computer makes the same "random" choice for everyone today.
+            const seedShift = currentWord.length; 
+            const letterIndex = Math.floor(getSeededRandom(seedShift) * nextLetters.length);
+            
+            currentWord += nextLetters[letterIndex];
             wordDisplay.innerText = currentWord;
             
-            // Hand control back to player
             hasAddedLetterThisTurn = false;
-            messageDisplay.innerText = "Computer moved. Your turn! Add a letter.";
+            messageDisplay.innerText = "Computer moved. Your turn!";
         } else {
-            // This shouldn't happen often if dictionary is consistent
             messageDisplay.innerText = "Computer is stuck! You win!";
             endGame(true);
         }
@@ -129,7 +125,7 @@ function claimWord() {
         endGame(true);
     } else {
         messageDisplay.style.color = "red";
-        messageDisplay.innerText = `FAILED! "${currentWord}" is not a dictionary word yet.`;
+        messageDisplay.innerText = `FAILED! "${currentWord}" is not a word.`;
         endGame(false);
     }
 }
@@ -162,7 +158,7 @@ function createKeyboard() {
 }
 
 function endGame(won, alreadyPlayed = false) {
-    hasAddedLetterThisTurn = true; // Block further typing
+    hasAddedLetterThisTurn = true; 
     document.getElementById('controls').style.display = 'none';
     document.getElementById('keyboard-container').style.display = 'none';
     document.getElementById('share-btn').style.display = 'inline-block';
@@ -181,7 +177,7 @@ function displaySavedGame(data) {
     currentWord = data.word;
     wordDisplay.innerText = currentWord;
     messageDisplay.style.color = data.won ? "green" : "red";
-    messageDisplay.innerText = data.won ? `Result: SUCCESS (${currentWord})` : `Result: FAILED (${currentWord})`;
+    messageDisplay.innerText = data.won ? `Result: ${data.won ? 'SUCCESS' : 'FAILED'} (${currentWord})`;
     endGame(data.won, true);
 }
 
@@ -198,13 +194,9 @@ function shareResult() {
     }
 
     const text = `Suffix Game ${today}\n${squares}\nhttps://jakusmaximus.github.io/suffixes/`;
-    navigator.clipboard.writeText(text).then(() => {
-        alert("Results copied to clipboard!");
-    });
+    navigator.clipboard.writeText(text).then(() => alert("Copied to clipboard!"));
 }
 
-// Attach event listeners to buttons
 passBtn.onclick = passTurn;
 claimBtn.onclick = claimWord;
-
 window.onload = initGame;
