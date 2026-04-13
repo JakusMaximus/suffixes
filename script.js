@@ -5,6 +5,8 @@ let dictionary = [];
 const dailyStarters = ["STR", "CON", "EXT", "PRE", "INT", "PRO", "REH", "TRA", "INC", "COM"];
 let currentWord = "";
 
+const today = new Date().toDateString();
+
 const wordDisplay = document.getElementById('word-display');
 const messageDisplay = document.getElementById('message');
 const inputField = document.getElementById('letter-input');
@@ -13,13 +15,21 @@ const controls = document.getElementById('controls');
 
 // 1. Fetch Dictionary and Start
 async function initGame() {
-    messageDisplay.innerText = "Generating daily challenge...";
+    messageDisplay.innerText = "Checking daily status...";
+    
+    // Check if player already played today
+    const savedData = JSON.parse(localStorage.getItem('suffix_daily_state'));
+    
     try {
         const response = await fetch(DICTIONARY_URL);
         const text = await response.text();
         dictionary = text.split('\n').map(word => word.trim().toUpperCase()).filter(word => word.length > 2);
-        
-        setupDailyAutomatedGame();
+
+        if (savedData && savedData.date === today) {
+            displaySavedGame(savedData);
+        } else {
+            setupDailyAutomatedGame();
+        }
     } catch (error) {
         messageDisplay.innerText = "Failed to load dictionary.";
     }
