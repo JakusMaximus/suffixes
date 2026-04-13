@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Suffixes - Daily Word Game</title>
-    <link rel="stylesheet" href="style.css?v=2.6">
+    <link rel="stylesheet" href="style.css?v=2.7">
 </head>
 <body>
 
@@ -16,13 +16,17 @@
 
         <div id="main-stage">
             <div id="loading-display">Loading Dictionary...</div>
-            <div id="instructions">Add a letter, then choose to Pass to the Computer or Claim a valid Word. What's the longest word you can make?</div>
-            <div class="word-display" id="word-display"></div>
+            <div id="instructions" style="display: none;">
+                Add a letter, then choose to <strong>Pass</strong> to the computer or <strong>Claim</strong> a valid word.
+            </div>
+            <div class="word-display" id="word-display" style="display: none;"></div>
         </div>
         
         <div id="controls">
-            <button class="btn-claim" onclick="claimWord()">Claim Word</button>
-            <button class="btn-pass" id="pass-btn" onclick="triggerComputer()">Pass to Computer</button>
+            <button class="btn-claim" id="claim-btn" onclick="claimWord()">Claim Word</button>
+            
+            <button class="btn-pass" id="pass-btn" onclick="passTurn()">Pass to Computer</button>
+            
             <input type="text" id="letter-input" maxlength="1" style="opacity: 0; position: absolute; pointer-events: none;">
         </div>
 
@@ -30,7 +34,7 @@
 
         <p class="message" id="message"></p>
         
-        <button class="share-btn" id="share-btn" onclick="shareResult()">Share Result ⎘</button>
+        <button class="share-btn" id="share-btn" style="display: none;" onclick="shareResult()">Share Result ⎘</button>
     </div>
 
     <script src="script.js?v=2.7"></script>
