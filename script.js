@@ -26,7 +26,6 @@ async function initGame() {
         const data = await response.json();
         dictionary = Object.keys(data).map(word => word.toUpperCase()).filter(word => word.length > 2);
 
-        // Hide loading, show word
         loadingDisplay.style.display = 'none';
         wordDisplay.style.display = 'block';
 
@@ -58,7 +57,6 @@ function setupDailyAutomatedGame() {
     wordDisplay.innerText = currentWord;
     messageDisplay.innerText = "Your turn! Add a letter.";
     inputField.disabled = false;
-    inputField.focus();
 }
 
 function createKeyboard() {
@@ -89,32 +87,44 @@ function playerMove() {
     wordDisplay.innerText = currentWord;
     inputField.value = "";
     
-    if (!dictionary.some(w => w.startsWith(currentWord))) {
+    // Check if the sequence is still possible
+    const isPossible = dictionary.some(w => w.startsWith(currentWord));
+    
+    if (!isPossible) {
         gameOver(`Game Over! No words start with "${currentWord}".`);
         return;
     }
+
     messageDisplay.innerText = "Computer is thinking...";
     setTimeout(computerMove, 600);
 }
 
 function computerMove() {
     const possibilities = dictionary.filter(w => w.startsWith(currentWord) && w.length > currentWord.length);
+    
     if (possibilities.length > 0) {
         possibilities.sort((a, b) => a.length - b.length);
-        currentWord += possibilities[0][currentWord.length];
+        const target = possibilities[0];
+        currentWord += target[currentWord.length];
         wordDisplay.innerText = currentWord;
-        messageDisplay.innerText = "Your turn!";
-        inputField.focus(); 
+        messageDisplay.innerText = "Your turn! Continue or Close Word.";
     } else {
-        gameOver("Computer is stuck! You win!");
+        // Computer is stuck, but player can still try to add letters!
+        messageDisplay.innerText = "Computer is stuck! You can try to extend it further or Close Word now.";
     }
 }
 
 function closeWord() {
     const isValid = dictionary.includes(currentWord);
-    messageDisplay.style.color = isValid ? "green" : "red";
-    messageDisplay.innerText = isValid ? `SUCCESS! "${currentWord}" is a word.` : `FAILED! "${currentWord}" is not in the dictionary.`;
-    endGame(isValid);
+    if (isValid) {
+        messageDisplay.style.color = "green";
+        messageDisplay.innerText = `SUCCESS! "${currentWord}" is a word.`;
+        endGame(true);
+    } else {
+        messageDisplay.style.color = "red";
+        messageDisplay.innerText = `FAILED! "${currentWord}" is not in the dictionary.`;
+        endGame(false);
+    }
 }
 
 function displaySavedGame(data) {
@@ -122,11 +132,12 @@ function displaySavedGame(data) {
     currentWord = data.word;
     wordDisplay.innerText = currentWord;
     messageDisplay.style.color = data.won ? "green" : "red";
-    messageDisplay.innerText = data.won ? `Daily Complete: SUCCESS (${currentWord})` : `Daily Complete: FAILED (${currentWord})`;
+    messageDisplay.innerText = data.won ? `Daily Result: SUCCESS (${currentWord})` : `Daily Result: FAILED (${currentWord})`;
     endGame(data.won, true);
 }
 
 function endGame(won, alreadyPlayed = false) {
+    inputField.disabled = true;
     document.getElementById('controls').style.display = 'none';
     document.getElementById('keyboard-container').style.display = 'none';
     document.getElementById('share-btn').style.display = 'inline-block';
