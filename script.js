@@ -1,5 +1,6 @@
-// The "Brain" of the Suffixes Game
-const DICTIONARY_URL = "https://raw.githubusercontent.com/first20hours/google-10000-english/master/google-10000-english-no-swears.txt";
+// The "Brain" of the Suffix Game
+// Middle-ground dictionary (~100k words)
+const DICTIONARY_URL = "https://raw.githubusercontent.com/dwyl/english-words/master/words_dictionary.json";
 
 let dictionary = [];
 let currentWord = "";
@@ -12,35 +13,30 @@ const ROWS = [
     ["Z", "X", "C", "V", "B", "N", "M"]
 ];
 
-// DOM Elements
 const wordDisplay = document.getElementById('word-display');
 const messageDisplay = document.getElementById('message');
 const inputField = document.getElementById('letter-input');
 const dateDisplay = document.getElementById('date-display');
 const controls = document.getElementById('controls');
 
-// 1. Initialize Game
 async function initGame() {
-    // Show loading state so we know the script is running
     if (wordDisplay) wordDisplay.innerText = "WAIT";
-    if (messageDisplay) messageDisplay.innerText = "Loading Daily Game...";
+    if (messageDisplay) messageDisplay.innerText = "Loading Suffixes...";
 
-    // Check if player already played today
-    const savedData = JSON.parse(localStorage.getItem('suffixes_daily_state'));
+    const savedData = JSON.parse(localStorage.getItem('suffix_daily_state'));
 
-    // Create keyboard if the container exists
     if (document.getElementById('keyboard-container')) {
         createKeyboard();
     }
 
     try {
         const response = await fetch(DICTIONARY_URL);
-        const text = await response.text();
+        const data = await response.json();
         
-        // Convert text file to Array
-        dictionary = text.split('\n')
-                         .map(word => word.trim().toUpperCase())
-                         .filter(word => word.length > 2);
+        // This dictionary is a JSON object, so we get the keys (the words)
+        dictionary = Object.keys(data)
+                           .map(word => word.toUpperCase())
+                           .filter(word => word.length > 2);
 
         if (savedData && savedData.date === today) {
             displaySavedGame(savedData);
@@ -48,12 +44,10 @@ async function initGame() {
             setupDailyAutomatedGame();
         }
     } catch (error) {
-        if (messageDisplay) messageDisplay.innerText = "Error loading dictionary. Refresh!";
-        console.error("Dictionary Load Error:", error);
+        if (messageDisplay) messageDisplay.innerText = "Connection error. Refresh!";
     }
 }
 
-// 2. Setup Daily Challenge
 function setupDailyAutomatedGame() {
     const now = new Date();
     const dateSeed = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
@@ -61,32 +55,27 @@ function setupDailyAutomatedGame() {
     let seededRandom = Math.sin(dateSeed) * 10000;
     seededRandom = seededRandom - Math.floor(seededRandom);
 
-    // 1. Get all 3-letter starts
+    // Filter starters that are very common in this larger dictionary
     const allStarts = dictionary.map(w => w.substring(0, 3)).filter(s => s.length === 3);
-    
-    // 2. Count how many words each start has
     const counts = {};
     allStarts.forEach(s => counts[s] = (counts[s] || 0) + 1);
 
-    // 3. Filter for "Power Starters" (Starters that lead to at least 50 words)
-    // This ensures plenty of routes and very common-sounding starts
+    // With a 100k dictionary, common starters have 100+ routes
     const viableStarts = Object.keys(counts).filter(start => {
-        const isCommon = counts[start] >= 50; 
-        const hasVowel = /[AEIOUY]/.test(start); // Must have a vowel (avoids things like 'BRR' or 'PST')
-        return isCommon && hasVowel;
+        return counts[start] >= 100 && /[AEIOUY]/.test(start);
     });
 
-    // 4. Pick the starter
     const finalIndex = Math.floor(seededRandom * viableStarts.length);
     currentWord = viableStarts[finalIndex];
 
-    // 5. Update UI
-    dateDisplay.innerText = today;
-    wordDisplay.innerText = currentWord;
-    messageDisplay.innerText = "Power Starter Loaded! Your turn.";
-    messageDisplay.style.color = "gray";
-    inputField.disabled = false;
-    inputField.focus();
+    if (dateDisplay) dateDisplay.innerText = today;
+    if (wordDisplay) wordDisplay.innerText = currentWord;
+    if (messageDisplay) messageDisplay.innerText = "Middle-ground dictionary loaded. Your turn!";
+    
+    if (inputField) {
+        inputField.disabled = false;
+        inputField.focus();
+    }
 }
 
 // 3. Gameplay Logic
