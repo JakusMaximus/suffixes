@@ -8,6 +8,7 @@ let hasAddedLetterThisTurn = false;
 
 let wordDisplay, loadingDisplay, instructions, messageDisplay, passBtn, claimBtn;
 
+// --- UTILITIES ---
 function getSeededRandom(additionalShift = 0) {
     let x = Math.sin(dailySeedValue + additionalShift) * 10000;
     let val = x - Math.floor(x);
@@ -71,6 +72,7 @@ function setupDailyGame() {
 function handleKeyPress(key) {
     if (hasAddedLetterThisTurn) return;
     if (instructions) instructions.style.display = 'none';
+    
     const tempWord = (currentWord + key).toUpperCase();
     const exists = dictionary.some(w => w.startsWith(tempWord));
     
@@ -84,12 +86,27 @@ function handleKeyPress(key) {
         hasAddedLetterThisTurn = true; 
         if (passBtn) passBtn.disabled = false;
         if (claimBtn) claimBtn.disabled = false;
-        messageDisplay.innerText = "Letter added! Claim Word or Pass Turn.";
+        messageDisplay.innerText = "Letter added! Claim or Pass.";
     }
 }
 
+function handleBackspace() {
+    if (!hasAddedLetterThisTurn) return; // Nothing to delete if they haven't typed yet
+
+    currentWord = currentWord.slice(0, -1);
+    wordDisplay.innerText = currentWord;
+    hasAddedLetterThisTurn = false; 
+
+    if (passBtn) passBtn.disabled = true;
+    if (claimBtn) claimBtn.disabled = true;
+    messageDisplay.innerText = "Letter removed. Try another!";
+}
+
 function passTurn() {
-    if (!hasAddedLetterThisTurn) return;
+    if (!hasAddedLetterThisTurn) {
+        messageDisplay.innerText = "Add a letter before passing!";
+        return;
+    }
     triggerComputer();
 }
 
@@ -108,8 +125,10 @@ function triggerComputer() {
             const seedShift = currentWord.length; 
             const index = Math.floor(getSeededRandom(seedShift) * shortestOptions.length);
             const chosenWord = shortestOptions[index];
+            
             currentWord += chosenWord[currentWord.length].toUpperCase();
             wordDisplay.innerText = currentWord;
+            
             hasAddedLetterThisTurn = false; 
             if (passBtn) passBtn.disabled = true; 
             if (claimBtn) claimBtn.disabled = false; 
@@ -138,15 +157,24 @@ function createKeyboard() {
     const container = document.getElementById('keyboard-container');
     if (!container) return;
     container.innerHTML = ''; 
-    const ROWS = [["Q","W","E","R","T","Y","U","I","O","P"],["A","S","D","F","G","H","J","K","L"],["Z","X","C","V","B","N","M"]];
+    const ROWS = [
+        ["Q","W","E","R","T","Y","U","I","O","P"],
+        ["A","S","D","F","G","H","J","K","L"],
+        ["Z","X","C","V","B","N","M", "⌫"]
+    ];
     ROWS.forEach(row => {
         const rowDiv = document.createElement('div');
         rowDiv.className = 'keyboard-row';
         row.forEach(key => {
             const btn = document.createElement('div');
             btn.className = 'key';
+            if (key === "⌫") {
+                btn.classList.add('key-back');
+                btn.onclick = handleBackspace;
+            } else {
+                btn.onclick = () => handleKeyPress(key);
+            }
             btn.innerText = key;
-            btn.onclick = () => handleKeyPress(key);
             rowDiv.appendChild(btn);
         });
         container.appendChild(rowDiv);
@@ -160,34 +188,21 @@ function endGame(won, alreadyPlayed = false) {
     document.getElementById('share-btn').style.display = 'inline-block';
 
     if (!alreadyPlayed) {
-        // --- STREAK LOGIC ---
         const savedData = JSON.parse(localStorage.getItem('suffix_daily_state'));
         let newStreak = 1;
 
-        if (savedData && savedData.streak) {
+        if (savedData && savedData.date) {
             const lastDate = new Date(savedData.date);
             const todayDate = new Date(todayString);
             const diffInTime = todayDate.getTime() - lastDate.getTime();
-            const diffInDays = diffInTime / (1000 * 3600 * 24);
+            const diffInDays = Math.floor(diffInTime / (1000 * 3600 * 24));
 
-            if (diffInDays === 1) {
-                // Played yesterday, increment streak
-                newStreak = savedData.streak + 1;
-            } else if (diffInDays > 1) {
-                // Missed a day, reset streak
-                newStreak = 1;
-            } else {
-                // Same day or error, keep old streak
-                newStreak = savedData.streak;
-            }
+            if (diffInDays === 1) newStreak = (savedData.streak || 0) + 1;
+            else if (diffInDays === 0) newStreak = savedData.streak || 1;
+            else newStreak = 1;
         }
 
-        const state = {
-            date: todayString, 
-            word: currentWord, 
-            won: won,
-            streak: newStreak
-        };
+        const state = { date: todayString, word: currentWord, won: won, streak: newStreak };
         localStorage.setItem('suffix_daily_state', JSON.stringify(state));
         updateMessageWithStreak(newStreak);
     }
@@ -195,7 +210,7 @@ function endGame(won, alreadyPlayed = false) {
 
 function updateMessageWithStreak(streak) {
     if (messageDisplay) {
-        const streakMsg = streak > 1 ? ` 🔥 Daily Streak: ${streak}` : ` Streak started!`;
+        const streakMsg = streak > 1 ? ` 🔥 Streak: ${streak}` : ` Streak started!`;
         messageDisplay.innerText += streakMsg;
     }
 }
@@ -220,18 +235,16 @@ function shareResult() {
     if(!savedData) return;
     
     const isWin = savedData.won;
-    const wordLength = currentWord.length;
+    const len = currentWord.length;
     const streak = savedData.streak || 1;
     
     let squares = "";
-    for(let i = 0; i < wordLength; i++) {
-        squares += (!isWin && i === wordLength - 1) ? "🟥" : "🟩";
+    for(let i = 0; i < len; i++) {
+        squares += (!isWin && i === len - 1) ? "🟥" : "🟩";
     }
 
     const fire = streak >= 3 ? "🔥" : "";
-    const text = `Suffixes Game ${todayString}\n${squares} (${wordLength} letters)\nStreak: ${streak}${fire}\nhttps://jakusmaximus.github.io/suffixes/`;
+    const text = `Suffix Game ${todayString}\n${squares} (${len} letters)\nStreak: ${streak}${fire}\nhttps://jakusmaximus.github.io/suffixes/`;
     
-    navigator.clipboard.writeText(text).then(() => {
-        alert("Results copied to clipboard!");
-    });
+    navigator.clipboard.writeText(text).then(() => alert("Results copied!"));
 }
