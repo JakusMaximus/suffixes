@@ -19,6 +19,15 @@ body {
     min-height: 100vh;
 }
 
+#instructions {
+    font-size: 0.85rem;
+    color: #6c757d;
+    max-width: 280px;
+    margin-bottom: 10px;
+    line-height: 1.4;
+    display: none; /* Hidden by default until game loads */
+}
+
 #game-container {
     width: 100%;
     max-width: 450px;
