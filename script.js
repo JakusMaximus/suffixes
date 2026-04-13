@@ -1,3 +1,4 @@
+// The "Brain" of the Suffix Game
 const DICTIONARY_URL = "https://raw.githubusercontent.com/dwyl/english-words/master/words_dictionary.json";
 
 let dictionary = [];
@@ -12,6 +13,7 @@ const ROWS = [
 
 const wordDisplay = document.getElementById('word-display');
 const loadingDisplay = document.getElementById('loading-display');
+const instructions = document.getElementById('instructions');
 const messageDisplay = document.getElementById('message');
 const inputField = document.getElementById('letter-input');
 const dateDisplay = document.getElementById('date-display');
@@ -24,24 +26,32 @@ async function initGame() {
     try {
         const response = await fetch(DICTIONARY_URL);
         const data = await response.json();
-        dictionary = Object.keys(data).map(word => word.toUpperCase()).filter(word => word.length > 2);
+        
+        // Dictionary is JSON; keys are the words
+        dictionary = Object.keys(data)
+                           .map(word => word.toUpperCase())
+                           .filter(word => word.length > 2);
 
         loadingDisplay.style.display = 'none';
         wordDisplay.style.display = 'block';
 
         if (savedData && savedData.date === today) {
+            if (instructions) instructions.style.display = 'none';
             displaySavedGame(savedData);
         } else {
+            if (instructions) instructions.style.display = 'block';
             setupDailyAutomatedGame();
         }
     } catch (error) {
         loadingDisplay.innerText = "Error Loading. Please refresh.";
+        console.error(error);
     }
 }
 
 function setupDailyAutomatedGame() {
     const now = new Date();
     const dateSeed = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
+    
     let seededRandom = Math.sin(dateSeed) * 10000;
     seededRandom = seededRandom - Math.floor(seededRandom);
 
@@ -49,37 +59,40 @@ function setupDailyAutomatedGame() {
     const counts = {};
     allStarts.forEach(s => counts[s] = (counts[s] || 0) + 1);
 
-    const viableStarts = Object.keys(counts).filter(start => counts[start] >= 150 && /[AEIOUY]/.test(start));
+    // Filter for starters that appear in at least 150 words
+    const viableStarts = Object.keys(counts).filter(start => {
+        return counts[start] >= 150 && /[AEIOUY]/.test(start);
+    });
+
     const finalIndex = Math.floor(seededRandom * viableStarts.length);
     currentWord = viableStarts[finalIndex];
 
     dateDisplay.innerText = today;
     wordDisplay.innerText = currentWord;
-    messageDisplay.innerText = "Your turn! Add a letter or Close Word.";
+    messageDisplay.innerText = "Ready to play!";
     inputField.disabled = false;
 }
 
 function playerMove() {
-    // Check if the input is actually a letter
     const letter = inputField.value.toUpperCase();
     if (!/^[A-Z]$/.test(letter)) return;
+
+    // Hide instructions on the very first move
+    if (instructions) instructions.style.display = 'none';
 
     currentWord += letter;
     wordDisplay.innerText = currentWord;
     inputField.value = "";
     
-    // Check if the sequence is still possible
-    const isPossible = dictionary.some(w => w.startsWith(currentWord));
+    const possible = dictionary.some(w => w.startsWith(currentWord));
     
-    if (!isPossible) {
+    if (!possible) {
         gameOver(`Game Over! No words start with "${currentWord}".`);
         return;
     }
 
     messageDisplay.innerText = "Computer is thinking...";
-    
-    // Disable keyboard during computer "thought"
-    inputField.disabled = true;
+    inputField.disabled = true; // Lock keyboard during computer turn
 
     setTimeout(computerMove, 600);
 }
@@ -92,17 +105,15 @@ function computerMove() {
         const target = possibilities[0];
         currentWord += target[currentWord.length];
         wordDisplay.innerText = currentWord;
-        messageDisplay.innerText = "Computer moved. Your turn!";
+        messageDisplay.innerText = "Computer moved. Continue or Close Word?";
     } else {
-        messageDisplay.innerText = "Computer is stuck! You can extend it or Close Word now.";
+        messageDisplay.innerText = "Computer is stuck! Extend it further or Close Word now.";
     }
     
-    // Re-enable keyboard for player
     inputField.disabled = false;
 }
 
 function closeWord() {
-    // Player chooses to bank their current string
     const isValid = dictionary.includes(currentWord);
     if (isValid) {
         messageDisplay.style.color = "green";
@@ -118,6 +129,7 @@ function closeWord() {
 function createKeyboard() {
     const container = document.getElementById('keyboard-container');
     container.innerHTML = '';
+
     ROWS.forEach(row => {
         const rowDiv = document.createElement('div');
         rowDiv.className = 'keyboard-row';
@@ -143,18 +155,27 @@ function displaySavedGame(data) {
     currentWord = data.word;
     wordDisplay.innerText = currentWord;
     messageDisplay.style.color = data.won ? "green" : "red";
-    messageDisplay.innerText = data.won ? `Daily Result: SUCCESS (${currentWord})` : `Daily Result: FAILED (${currentWord})`;
+    messageDisplay.innerText = data.won ? 
+        `Daily Result: SUCCESS (${currentWord})` : 
+        `Daily Result: FAILED (${currentWord})`;
     endGame(data.won, true);
 }
 
 function endGame(won, alreadyPlayed = false) {
     inputField.disabled = true;
-    document.getElementById('controls').style.display = 'none';
-    document.getElementById('keyboard-container').style.display = 'none';
-    document.getElementById('share-btn').style.display = 'inline-block';
+    if (controls) controls.style.display = 'none';
+    const kb = document.getElementById('keyboard-container');
+    if (kb) kb.style.display = 'none';
+    const share = document.getElementById('share-btn');
+    if (share) share.style.display = 'inline-block';
 
     if (!alreadyPlayed) {
-        localStorage.setItem('suffix_daily_state', JSON.stringify({date: today, word: currentWord, won: won}));
+        const gameState = {
+            date: today,
+            word: currentWord,
+            won: won
+        };
+        localStorage.setItem('suffix_daily_state', JSON.stringify(gameState));
     }
 }
 
@@ -168,7 +189,7 @@ function shareResult() {
     const status = messageDisplay.innerText.includes("SUCCESS") ? "🟩" : "🟥";
     const text = `Suffix Game ${today}\n${status} Word: ${currentWord}\nhttps://jakusmaximus.github.io/suffixes/`;
     navigator.clipboard.writeText(text);
-    alert("Result copied!");
+    alert("Result copied to clipboard!");
 }
 
 window.onload = initGame;
