@@ -2,22 +2,18 @@ const DICTIONARY_URL = "https://raw.githubusercontent.com/dwyl/english-words/mas
 let dictionary = [];
 let currentWord = "";
 let dailySeedValue = 0; 
-const today = new Date().toDateString();
+const todayString = new Date().toDateString();
 
-// Control variable to enforce one-letter-per-turn
 let hasAddedLetterThisTurn = false;
 
-// Global element references
 let wordDisplay, loadingDisplay, instructions, messageDisplay, passBtn, claimBtn;
 
-// --- SEED UTILITY ---
 function getSeededRandom(additionalShift = 0) {
     let x = Math.sin(dailySeedValue + additionalShift) * 10000;
     let val = x - Math.floor(x);
     return val < 0 ? val + 1 : val;
 }
 
-// Ensure DOM is ready before running
 document.addEventListener('DOMContentLoaded', () => {
     initGame();
 });
@@ -39,13 +35,12 @@ async function initGame() {
     try {
         const response = await fetch(DICTIONARY_URL);
         const data = await response.json();
-        // Standardize dictionary
         dictionary = Object.keys(data).map(w => w.toUpperCase()).filter(w => w.length > 2);
 
         if (loadingDisplay) loadingDisplay.style.display = 'none';
         if (wordDisplay) wordDisplay.style.display = 'block';
 
-        if (savedData && savedData.date === today) {
+        if (savedData && savedData.date === todayString) {
             displaySavedGame(savedData);
         } else {
             if (instructions) instructions.style.display = 'block';
@@ -65,18 +60,16 @@ function setupDailyGame() {
     const startIndex = Math.floor(getSeededRandom(0) * viable.length);
     currentWord = viable[startIndex];
     
-    document.getElementById('date-display').innerText = today;
+    document.getElementById('date-display').innerText = todayString;
     wordDisplay.innerText = currentWord;
     messageDisplay.innerText = "Your turn! Add one letter.";
     
-    // Initial state: Buttons locked until player types
     if (passBtn) passBtn.disabled = true;
     if (claimBtn) claimBtn.disabled = true;
 }
 
 function handleKeyPress(key) {
     if (hasAddedLetterThisTurn) return;
-
     if (instructions) instructions.style.display = 'none';
     const tempWord = (currentWord + key).toUpperCase();
     const exists = dictionary.some(w => w.startsWith(tempWord));
@@ -88,9 +81,7 @@ function handleKeyPress(key) {
     } else {
         currentWord = tempWord;
         wordDisplay.innerText = currentWord;
-        hasAddedLetterThisTurn = true; // Lock keyboard
-        
-        // UNLOCK BUTTONS
+        hasAddedLetterThisTurn = true; 
         if (passBtn) passBtn.disabled = false;
         if (claimBtn) claimBtn.disabled = false;
         messageDisplay.innerText = "Letter added! Claim Word or Pass Turn.";
@@ -104,32 +95,24 @@ function passTurn() {
 
 function triggerComputer() {
     messageDisplay.innerText = "Computer is thinking...";
-    // Lock everything during computer turn
     if (passBtn) passBtn.disabled = true;
     if (claimBtn) claimBtn.disabled = true;
     hasAddedLetterThisTurn = true; 
 
     setTimeout(() => {
         const possibilities = dictionary.filter(w => w.startsWith(currentWord) && w.length > currentWord.length);
-        
         if (possibilities.length > 0) {
-            // Pick shortest word path
             possibilities.sort((a, b) => (a.length - b.length) || a.localeCompare(b));
             const shortestLen = possibilities[0].length;
             const shortestOptions = possibilities.filter(w => w.length === shortestLen);
-            
             const seedShift = currentWord.length; 
             const index = Math.floor(getSeededRandom(seedShift) * shortestOptions.length);
             const chosenWord = shortestOptions[index];
-            
             currentWord += chosenWord[currentWord.length].toUpperCase();
             wordDisplay.innerText = currentWord;
-            
-            // --- THE FIX ---
-            // Allow the player to claim the computer's word immediately
             hasAddedLetterThisTurn = false; 
-            if (passBtn) passBtn.disabled = true; // Still need to add a letter to pass back
-            if (claimBtn) claimBtn.disabled = false; // BUT you can claim what the computer just did!
+            if (passBtn) passBtn.disabled = true; 
+            if (claimBtn) claimBtn.disabled = false; 
             messageDisplay.innerText = "Computer moved. Add a letter or Claim!";
         } else {
             messageDisplay.innerText = "Computer is stuck! You win!";
@@ -140,7 +123,6 @@ function triggerComputer() {
 
 function claimWord() {
     const isValid = dictionary.includes(currentWord.toUpperCase());
-    
     if (isValid) {
         messageDisplay.style.color = "green";
         messageDisplay.innerText = `SUCCESS! "${currentWord}" is a word.`;
@@ -156,12 +138,7 @@ function createKeyboard() {
     const container = document.getElementById('keyboard-container');
     if (!container) return;
     container.innerHTML = ''; 
-    const ROWS = [
-        ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
-        ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
-        ["Z", "X", "C", "V", "B", "N", "M"]
-    ];
-
+    const ROWS = [["Q","W","E","R","T","Y","U","I","O","P"],["A","S","D","F","G","H","J","K","L"],["Z","X","C","V","B","N","M"]];
     ROWS.forEach(row => {
         const rowDiv = document.createElement('div');
         rowDiv.className = 'keyboard-row';
@@ -178,16 +155,48 @@ function createKeyboard() {
 
 function endGame(won, alreadyPlayed = false) {
     hasAddedLetterThisTurn = true; 
-    const controls = document.getElementById('controls');
-    const keyboard = document.getElementById('keyboard-container');
-    const share = document.getElementById('share-btn');
-
-    if (controls) controls.style.display = 'none';
-    if (keyboard) keyboard.style.display = 'none';
-    if (share) share.style.display = 'inline-block';
+    document.getElementById('controls').style.display = 'none';
+    document.getElementById('keyboard-container').style.display = 'none';
+    document.getElementById('share-btn').style.display = 'inline-block';
 
     if (!alreadyPlayed) {
-        localStorage.setItem('suffix_daily_state', JSON.stringify({date: today, word: currentWord, won: won}));
+        // --- STREAK LOGIC ---
+        const savedData = JSON.parse(localStorage.getItem('suffix_daily_state'));
+        let newStreak = 1;
+
+        if (savedData && savedData.streak) {
+            const lastDate = new Date(savedData.date);
+            const todayDate = new Date(todayString);
+            const diffInTime = todayDate.getTime() - lastDate.getTime();
+            const diffInDays = diffInTime / (1000 * 3600 * 24);
+
+            if (diffInDays === 1) {
+                // Played yesterday, increment streak
+                newStreak = savedData.streak + 1;
+            } else if (diffInDays > 1) {
+                // Missed a day, reset streak
+                newStreak = 1;
+            } else {
+                // Same day or error, keep old streak
+                newStreak = savedData.streak;
+            }
+        }
+
+        const state = {
+            date: todayString, 
+            word: currentWord, 
+            won: won,
+            streak: newStreak
+        };
+        localStorage.setItem('suffix_daily_state', JSON.stringify(state));
+        updateMessageWithStreak(newStreak);
+    }
+}
+
+function updateMessageWithStreak(streak) {
+    if (messageDisplay) {
+        const streakMsg = streak > 1 ? ` 🔥 Daily Streak: ${streak}` : ` Streak started!`;
+        messageDisplay.innerText += streakMsg;
     }
 }
 
@@ -202,12 +211,27 @@ function displaySavedGame(data) {
     wordDisplay.innerText = currentWord;
     messageDisplay.style.color = data.won ? "green" : "red";
     messageDisplay.innerText = data.won ? `Result: SUCCESS (${currentWord})` : `Result: FAILED (${currentWord})`;
+    if (data.streak) updateMessageWithStreak(data.streak);
     endGame(data.won, true);
 }
 
 function shareResult() {
     const savedData = JSON.parse(localStorage.getItem('suffix_daily_state'));
     if(!savedData) return;
-    const text = `Suffix Game ${today}\n${currentWord}\nhttps://jakusmaximus.github.io/suffixes/`;
-    navigator.clipboard.writeText(text).then(() => alert("Copied!"));
+    
+    const isWin = savedData.won;
+    const wordLength = currentWord.length;
+    const streak = savedData.streak || 1;
+    
+    let squares = "";
+    for(let i = 0; i < wordLength; i++) {
+        squares += (!isWin && i === wordLength - 1) ? "🟥" : "🟩";
+    }
+
+    const fire = streak >= 3 ? "🔥" : "";
+    const text = `Suffixes Game ${todayString}\n${squares} (${wordLength} letters)\nStreak: ${streak}${fire}\nhttps://jakusmaximus.github.io/suffixes/`;
+    
+    navigator.clipboard.writeText(text).then(() => {
+        alert("Results copied to clipboard!");
+    });
 }
