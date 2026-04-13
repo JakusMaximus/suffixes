@@ -55,8 +55,64 @@ function setupDailyAutomatedGame() {
 
     dateDisplay.innerText = today;
     wordDisplay.innerText = currentWord;
-    messageDisplay.innerText = "Your turn! Add a letter.";
+    messageDisplay.innerText = "Your turn! Add a letter or Close Word.";
     inputField.disabled = false;
+}
+
+function playerMove() {
+    // Check if the input is actually a letter
+    const letter = inputField.value.toUpperCase();
+    if (!/^[A-Z]$/.test(letter)) return;
+
+    currentWord += letter;
+    wordDisplay.innerText = currentWord;
+    inputField.value = "";
+    
+    // Check if the sequence is still possible
+    const isPossible = dictionary.some(w => w.startsWith(currentWord));
+    
+    if (!isPossible) {
+        gameOver(`Game Over! No words start with "${currentWord}".`);
+        return;
+    }
+
+    messageDisplay.innerText = "Computer is thinking...";
+    
+    // Disable keyboard during computer "thought"
+    inputField.disabled = true;
+
+    setTimeout(computerMove, 600);
+}
+
+function computerMove() {
+    const possibilities = dictionary.filter(w => w.startsWith(currentWord) && w.length > currentWord.length);
+    
+    if (possibilities.length > 0) {
+        possibilities.sort((a, b) => a.length - b.length);
+        const target = possibilities[0];
+        currentWord += target[currentWord.length];
+        wordDisplay.innerText = currentWord;
+        messageDisplay.innerText = "Computer moved. Your turn!";
+    } else {
+        messageDisplay.innerText = "Computer is stuck! You can extend it or Close Word now.";
+    }
+    
+    // Re-enable keyboard for player
+    inputField.disabled = false;
+}
+
+function closeWord() {
+    // Player chooses to bank their current string
+    const isValid = dictionary.includes(currentWord);
+    if (isValid) {
+        messageDisplay.style.color = "green";
+        messageDisplay.innerText = `SUCCESS! "${currentWord}" is a word.`;
+        endGame(true);
+    } else {
+        messageDisplay.style.color = "red";
+        messageDisplay.innerText = `FAILED! "${currentWord}" is not in the dictionary.`;
+        endGame(false);
+    }
 }
 
 function createKeyboard() {
@@ -80,51 +136,6 @@ function handleKeyPress(key) {
     if (inputField.disabled) return;
     inputField.value = key;
     playerMove();
-}
-
-function playerMove() {
-    currentWord += inputField.value.toUpperCase();
-    wordDisplay.innerText = currentWord;
-    inputField.value = "";
-    
-    // Check if the sequence is still possible
-    const isPossible = dictionary.some(w => w.startsWith(currentWord));
-    
-    if (!isPossible) {
-        gameOver(`Game Over! No words start with "${currentWord}".`);
-        return;
-    }
-
-    messageDisplay.innerText = "Computer is thinking...";
-    setTimeout(computerMove, 600);
-}
-
-function computerMove() {
-    const possibilities = dictionary.filter(w => w.startsWith(currentWord) && w.length > currentWord.length);
-    
-    if (possibilities.length > 0) {
-        possibilities.sort((a, b) => a.length - b.length);
-        const target = possibilities[0];
-        currentWord += target[currentWord.length];
-        wordDisplay.innerText = currentWord;
-        messageDisplay.innerText = "Your turn! Continue or Close Word.";
-    } else {
-        // Computer is stuck, but player can still try to add letters!
-        messageDisplay.innerText = "Computer is stuck! You can try to extend it further or Close Word now.";
-    }
-}
-
-function closeWord() {
-    const isValid = dictionary.includes(currentWord);
-    if (isValid) {
-        messageDisplay.style.color = "green";
-        messageDisplay.innerText = `SUCCESS! "${currentWord}" is a word.`;
-        endGame(true);
-    } else {
-        messageDisplay.style.color = "red";
-        messageDisplay.innerText = `FAILED! "${currentWord}" is not in the dictionary.`;
-        endGame(false);
-    }
 }
 
 function displaySavedGame(data) {
