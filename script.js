@@ -4,12 +4,14 @@ let currentWord = "";
 let dailySeedValue = 0; 
 const today = new Date().toDateString();
 
+// Control variable to enforce one-letter-per-turn
 let hasAddedLetterThisTurn = false;
 
-// Global references to elements
+// Global element references
 let wordDisplay, loadingDisplay, instructions, messageDisplay, passBtn, claimBtn;
 
 // --- SEED UTILITY ---
+// Ensures "random" choices are identical for everyone today
 function getSeededRandom(additionalShift = 0) {
     let x = Math.sin(dailySeedValue + additionalShift) * 10000;
     let val = x - Math.floor(x);
@@ -17,7 +19,7 @@ function getSeededRandom(additionalShift = 0) {
 }
 
 async function initGame() {
-    // Correctly grab elements after page load
+    // Identify HTML elements
     wordDisplay = document.getElementById('word-display');
     loadingDisplay = document.getElementById('loading-display');
     instructions = document.getElementById('instructions');
@@ -28,12 +30,14 @@ async function initGame() {
     const savedData = JSON.parse(localStorage.getItem('suffix_daily_state'));
     createKeyboard();
 
+    // Generate the base seed once based on the date
     const now = new Date();
     dailySeedValue = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
 
     try {
         const response = await fetch(DICTIONARY_URL);
         const data = await response.json();
+        // Standardize dictionary (Upper Case)
         dictionary = Object.keys(data).map(w => w.toUpperCase()).filter(w => w.length > 2);
 
         if (loadingDisplay) loadingDisplay.style.display = 'none';
@@ -46,33 +50,43 @@ async function initGame() {
             setupDailyGame();
         }
     } catch (e) {
+        console.error("Dictionary Load Failed", e);
         if (loadingDisplay) loadingDisplay.innerText = "Load Error. Please refresh.";
     }
 }
 
 function setupDailyGame() {
+    // 1. Find all 3-letter starts that have plenty of word options
     const allStarts = dictionary.map(w => w.substring(0, 3)).filter(s => s.length === 3);
     const counts = {};
     allStarts.forEach(s => counts[s] = (counts[s] || 0) + 1);
     const viable = Object.keys(counts).filter(s => counts[s] >= 150 && /[AEIOUY]/.test(s));
 
+    // 2. Pick starting word using the seed
     const startIndex = Math.floor(getSeededRandom(0) * viable.length);
     currentWord = viable[startIndex];
     
     const dateEl = document.getElementById('date-display');
     if (dateEl) dateEl.innerText = today;
     if (wordDisplay) wordDisplay.innerText = currentWord;
-    if (messageDisplay) messageDisplay.innerText = "Your turn! Add one letter.";
+    if (messageDisplay) {
+        messageDisplay.style.color = "black";
+        messageDisplay.innerText = "Your turn! Add one letter.";
+    }
     
+    // Disable buttons until a letter is added
     if (passBtn) passBtn.disabled = true;
     if (claimBtn) claimBtn.disabled = true;
 }
 
 function handleKeyPress(key) {
+    // Only allow one letter per turn
     if (hasAddedLetterThisTurn) return;
 
     if (instructions) instructions.style.display = 'none';
     const tempWord = currentWord + key;
+    
+    // Check if the move is legal
     const exists = dictionary.some(w => w.startsWith(tempWord));
     
     if (!exists) {
@@ -82,62 +96,61 @@ function handleKeyPress(key) {
     } else {
         currentWord = tempWord;
         wordDisplay.innerText = currentWord;
-        hasAddedLetterThisTurn = true; 
+        hasAddedLetterThisTurn = true; // Lock keyboard
         
         if (passBtn) passBtn.disabled = false;
         if (claimBtn) claimBtn.disabled = false;
-        if (messageDisplay) messageDisplay.innerText = "Letter added! Claim or Pass.";
+        if (messageDisplay) {
+            messageDisplay.style.color = "black";
+            messageDisplay.innerText = "Letter added! Now Claim Word or Pass Turn.";
+        }
     }
 }
 
 function passTurn() {
-    // If the user hasn't added a letter yet...
+    // Logic check if user tries to pass too early
     if (!hasAddedLetterThisTurn) {
         if (messageDisplay) {
-            messageDisplay.style.color = "orange"; // Give it a warning color
+            messageDisplay.style.color = "orange";
             messageDisplay.innerText = "You must add a letter before passing!";
         }
-        return; // Stop here and don't trigger the computer
+        return;
     }
-    
-    // Otherwise, proceed to the computer's turn
-    if (messageDisplay) messageDisplay.style.color = "black"; // Reset color
     triggerComputer();
 }
 
 function triggerComputer() {
-    if (messageDisplay) messageDisplay.innerText = "Computer is thinking...";
+    if (messageDisplay) {
+        messageDisplay.style.color = "black";
+        messageDisplay.innerText = "Computer is thinking...";
+    }
     if (passBtn) passBtn.disabled = true;
     if (claimBtn) claimBtn.disabled = true;
 
     setTimeout(() => {
-        // 1. Find all words that start with the current string
         const possibilities = dictionary.filter(w => w.startsWith(currentWord) && w.length > currentWord.length);
         
         if (possibilities.length > 0) {
-            // 2. Sort by length (shortest first) then alphabetically
-            // This ensures the computer prefers common/short words
+            // Sort by shortest length first, then alphabetical for tie-breaks
             possibilities.sort((a, b) => {
-                if (a.length !== b.length) {
-                    return a.length - b.length;
-                }
+                if (a.length !== b.length) return a.length - b.length;
                 return a.localeCompare(b);
             });
 
-            // 3. To keep it fair for everyone, we pick from the top "shortest" options 
-            // but use the seed so the choice is identical for everyone today.
-            const shortestLength = possibilities[0].length;
-            const shortestOptions = possibilities.filter(w => w.length === shortestLength);
+            // Find all options at the shortest available length
+            const shortestLen = possibilities[0].length;
+            const shortestOptions = possibilities.filter(w => w.length === shortestLen);
             
-            // Use seed + word length to pick from the shortest options
+            // Pick based on daily seed to ensure fairness
             const seedShift = currentWord.length; 
             const index = Math.floor(getSeededRandom(seedShift) * shortestOptions.length);
             const chosenWord = shortestOptions[index];
             
-            // 4. Update the word with just the NEXT letter
+            // Add ONLY the next letter
             currentWord += chosenWord[currentWord.length];
             wordDisplay.innerText = currentWord;
             
+            // Re-unlock player turn
             hasAddedLetterThisTurn = false;
             if (messageDisplay) messageDisplay.innerText = "Computer moved. Your turn!";
         } else {
@@ -148,7 +161,14 @@ function triggerComputer() {
 }
 
 function claimWord() {
-    const isValid = dictionary.includes(currentWord);
+    // If the button is clicked but no letter added (safeguard)
+    if (!hasAddedLetterThisTurn) {
+        if (messageDisplay) messageDisplay.innerText = "Add a letter first!";
+        return;
+    }
+
+    const isValid = dictionary.includes(currentWord.toUpperCase());
+    
     if (isValid) {
         if (messageDisplay) {
             messageDisplay.style.color = "green";
@@ -158,7 +178,7 @@ function claimWord() {
     } else {
         if (messageDisplay) {
             messageDisplay.style.color = "red";
-            messageDisplay.innerText = `FAILED! "${currentWord}" is not a word.`;
+            messageDisplay.innerText = `FAILED! "${currentWord}" is not in the dictionary.`;
         }
         endGame(false);
     }
@@ -167,7 +187,8 @@ function claimWord() {
 function createKeyboard() {
     const container = document.getElementById('keyboard-container');
     if (!container) return;
-    container.innerHTML = ''; // Clear existing
+    container.innerHTML = ''; 
+
     const ROWS = [
         ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
         ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
@@ -234,7 +255,8 @@ function shareResult() {
     }
 
     const text = `Suffix Game ${today}\n${squares}\nhttps://jakusmaximus.github.io/suffixes/`;
-    navigator.clipboard.writeText(text).then(() => alert("Copied to clipboard!"));
+    navigator.clipboard.writeText(text).then(() => alert("Results copied to clipboard!"));
 }
 
+// Start the game
 window.onload = initGame;
