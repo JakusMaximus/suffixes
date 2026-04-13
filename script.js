@@ -58,29 +58,35 @@ function setupDailyAutomatedGame() {
     const now = new Date();
     const dateSeed = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
     
-    // Seeded random number (same for everyone today)
     let seededRandom = Math.sin(dateSeed) * 10000;
     seededRandom = seededRandom - Math.floor(seededRandom);
 
-    // Get starters from words of reasonable length (4-10 chars)
-    const commonWords = dictionary.filter(w => w.length >= 4 && w.length <= 10);
-    const uniqueStarts = [...new Set(commonWords.map(w => w.substring(0, 3)))];
-
-    const finalIndex = Math.floor(seededRandom * uniqueStarts.length);
-    currentWord = uniqueStarts[finalIndex];
-
-    // Update UI
-    if (dateDisplay) dateDisplay.innerText = today;
-    if (wordDisplay) wordDisplay.innerText = currentWord;
-    if (messageDisplay) {
-        messageDisplay.innerText = "Your turn! Tap a letter.";
-        messageDisplay.style.color = "gray";
-    }
+    // 1. Get all 3-letter starts
+    const allStarts = dictionary.map(w => w.substring(0, 3)).filter(s => s.length === 3);
     
-    if (inputField) {
-        inputField.disabled = false;
-        inputField.focus();
-    }
+    // 2. Count how many words each start has
+    const counts = {};
+    allStarts.forEach(s => counts[s] = (counts[s] || 0) + 1);
+
+    // 3. Filter for "Power Starters" (Starters that lead to at least 50 words)
+    // This ensures plenty of routes and very common-sounding starts
+    const viableStarts = Object.keys(counts).filter(start => {
+        const isCommon = counts[start] >= 50; 
+        const hasVowel = /[AEIOUY]/.test(start); // Must have a vowel (avoids things like 'BRR' or 'PST')
+        return isCommon && hasVowel;
+    });
+
+    // 4. Pick the starter
+    const finalIndex = Math.floor(seededRandom * viableStarts.length);
+    currentWord = viableStarts[finalIndex];
+
+    // 5. Update UI
+    dateDisplay.innerText = today;
+    wordDisplay.innerText = currentWord;
+    messageDisplay.innerText = "Power Starter Loaded! Your turn.";
+    messageDisplay.style.color = "gray";
+    inputField.disabled = false;
+    inputField.focus();
 }
 
 // 3. Gameplay Logic
