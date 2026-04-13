@@ -153,7 +153,7 @@ function shareResult() {
         }
     }
 
-    const text = `Suffix Game ${today}\n${squares}\nWord: ${currentWord}\nhttps://jakusmaximus.github.io/suffixes/`;
+    const text = `Suffixes Game ${today}\n${squares}\nhttps://jakusmaximus.github.io/suffixes/`;
     navigator.clipboard.writeText(text);
     alert("Shareable results copied to clipboard!");
 }
