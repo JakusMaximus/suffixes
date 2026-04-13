@@ -1,23 +1,52 @@
-// Simple dictionary for testing
-const dictionary = ["STRETCH", "STRETCHED", "STRETCHING", "STRETCHERS", "CONFERENCE", "CONFISCATE", "CONFISCATED", "EXTENSION", "EXTENSIONIST", "EXTENSIONISM"];
+// The "Brain" of the Suffix Game
+const DICTIONARY_URL = "https://raw.githubusercontent.com/first20hours/google-10000-english/master/google-10000-english-no-swears.txt";
 
-const dailyStarters = ["STR", "CON", "EXT", "PRE", "INT"];
+let dictionary = [];
+const dailyStarters = ["STR", "CON", "EXT", "PRE", "INT", "PRO", "REH", "TRA", "INC", "COM"];
 let currentWord = "";
-
-// Initialize Game
-const today = new Date();
-const dateString = today.toDateString();
-document.getElementById('date-display').innerText = dateString;
-
-const dayIndex = today.getDate() % dailyStarters.length;
-currentWord = dailyStarters[dayIndex];
 
 const wordDisplay = document.getElementById('word-display');
 const messageDisplay = document.getElementById('message');
 const inputField = document.getElementById('letter-input');
+const dateDisplay = document.getElementById('date-display');
+const controls = document.getElementById('controls');
 
-wordDisplay.innerText = currentWord;
+// 1. Fetch Dictionary and Start
+async function initGame() {
+    messageDisplay.innerText = "Loading dictionary...";
+    inputField.disabled = true; // Prevent typing while loading
+    
+    try {
+        const response = await fetch(DICTIONARY_URL);
+        const text = await response.text();
+        // Create an array of uppercase words
+        dictionary = text.split('\n')
+                         .map(word => word.trim().toUpperCase())
+                         .filter(word => word.length > 2);
+        
+        setupDailyGame();
+    } catch (error) {
+        messageDisplay.innerText = "Error loading dictionary. Check your internet!";
+        console.error(error);
+    }
+}
 
+function setupDailyGame() {
+    const today = new Date();
+    dateDisplay.innerText = today.toDateString();
+    
+    // Pick the same starter for everyone based on the day of the month
+    const dayIndex = today.getDate() % dailyStarters.length;
+    currentWord = dailyStarters[dayIndex];
+    
+    wordDisplay.innerText = currentWord;
+    messageDisplay.innerText = "Your turn! Add a letter.";
+    messageDisplay.style.color = "gray";
+    inputField.disabled = false;
+    inputField.focus();
+}
+
+// 2. Player Input Logic
 function playerMove() {
     const letter = inputField.value.toUpperCase();
     if (!/^[A-Z]$/.test(letter)) return;
@@ -26,57 +55,63 @@ function playerMove() {
     wordDisplay.innerText = currentWord;
     inputField.value = "";
     
-    // Check if the player just entered a sequence that doesn't exist at all
+    // Check if a word can still be formed
     const possible = dictionary.some(w => w.startsWith(currentWord));
+    
     if (!possible) {
-        gameOver(`The computer stopped. "${currentWord}" isn't the start of any known word!`);
+        gameOver(`Game Over! No words start with "${currentWord}".`);
         return;
     }
 
+    messageDisplay.innerText = "Computer is thinking...";
     setTimeout(computerMove, 600);
 }
 
+// 3. Computer Logic
 function computerMove() {
-    const possibleWords = dictionary.filter(w => w.startsWith(currentWord) && w.length > currentWord.length);
+    // Find all valid longer words
+    const possibilities = dictionary.filter(w => w.startsWith(currentWord) && w.length > currentWord.length);
     
-    if (possibleWords.length > 0) {
-        // Pick the first available word
-        const target = possibleWords[0];
+    if (possibilities.length > 0) {
+        // Computer picks the shortest possible path to stay strategic
+        possibilities.sort((a, b) => a.length - b.length);
+        const target = possibilities[0];
+        
         const nextLetter = target[currentWord.length];
         currentWord += nextLetter;
         wordDisplay.innerText = currentWord;
+        messageDisplay.innerText = "Your turn!";
     } else {
-        gameOver("The computer can't find another letter! You pushed it to the limit.");
+        gameOver("Computer is stuck! You've formed a word that can't be extended.");
     }
 }
 
+// 4. Closing & Scoring
 function closeWord() {
-    if (dictionary.includes(currentWord)) {
+    const isValid = dictionary.includes(currentWord);
+    
+    if (isValid) {
         messageDisplay.style.color = "green";
-        messageDisplay.innerText = `WIN! "${currentWord}" is a valid word.`;
+        messageDisplay.innerText = `SUCCESS! "${currentWord}" is a word.`;
         endGame(true);
     } else {
         messageDisplay.style.color = "red";
-        messageDisplay.innerText = `LOSE! "${currentWord}" is not a complete word.`;
+        messageDisplay.innerText = `FAILED! "${currentWord}" is not in the dictionary.`;
         endGame(false);
     }
 }
 
 function endGame(won) {
-    document.getElementById('controls').style.display = 'none';
+    controls.style.display = 'none';
     document.getElementById('share-btn').style.display = 'inline-block';
     
+    // Check if the game COULD have gone longer
     const longer = dictionary.find(w => w.startsWith(currentWord) && w.length > currentWord.length);
     if (won && longer) {
-        messageDisplay.innerText += ` Could you have gone further? Yes: ${longer}...`;
+        messageDisplay.innerText += `\nYou could have carried on to: ${longer}`;
+    } else if (won) {
+        messageDisplay.innerText += `\nPerfect! You reached the end of the chain.`;
     }
-}
-
-function shareResult() {
-    const icon = messageDisplay.innerText.includes("WIN") ? "🟩" : "🟥";
-    const text = `Suffix Day ${today.getDate()}\n${icon} Word: ${currentWord}\nCan you beat me?`;
-    navigator.clipboard.writeText(text);
-    alert("Result copied to clipboard!");
 }
 
 function gameOver(msg) {
@@ -84,3 +119,13 @@ function gameOver(msg) {
     messageDisplay.innerText = msg;
     endGame(false);
 }
+
+function shareResult() {
+    const status = messageDisplay.innerText.includes("SUCCESS") ? "🟩" : "🟥";
+    const text = `Suffix Game ${dateDisplay.innerText}\n${status} Final Word: ${currentWord}\nhttps://your-github-username.github.io/your-repo-name/`;
+    navigator.clipboard.writeText(text);
+    alert("Copied to clipboard!");
+}
+
+// Start!
+initGame();
