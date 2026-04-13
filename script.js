@@ -13,35 +13,44 @@ const controls = document.getElementById('controls');
 
 // 1. Fetch Dictionary and Start
 async function initGame() {
-    messageDisplay.innerText = "Loading dictionary...";
-    inputField.disabled = true; // Prevent typing while loading
-    
+    messageDisplay.innerText = "Generating daily challenge...";
     try {
         const response = await fetch(DICTIONARY_URL);
         const text = await response.text();
-        // Create an array of uppercase words
-        dictionary = text.split('\n')
-                         .map(word => word.trim().toUpperCase())
-                         .filter(word => word.length > 2);
+        dictionary = text.split('\n').map(word => word.trim().toUpperCase()).filter(word => word.length > 2);
         
-        setupDailyGame();
+        setupDailyAutomatedGame();
     } catch (error) {
-        messageDisplay.innerText = "Error loading dictionary. Check your internet!";
-        console.error(error);
+        messageDisplay.innerText = "Failed to load dictionary.";
     }
 }
 
-function setupDailyGame() {
+function setupDailyAutomatedGame() {
     const today = new Date();
+    const dateSeed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+    
+    // Use the date as a seed for predictable randomness
+    let seededRandom = Math.sin(dateSeed) * 10000;
+    seededRandom = seededRandom - Math.floor(seededRandom);
+
+    // 1. Get all possible 3-letter starts from the dictionary
+    const allStarts = dictionary.map(w => w.substring(0, 3)).filter(s => s.length === 3);
+    const uniqueStarts = [...new Set(allStarts)];
+
+    // 2. Filter for starts that have at least 15 possible word outcomes
+    const viableStarts = uniqueStarts.filter(start => {
+        const routes = dictionary.filter(w => w.startsWith(start)).length;
+        return routes >= 15; // You can change this number to make it harder/easier
+    });
+
+    // 3. Pick one based on our seeded random number
+    const finalIndex = Math.floor(seededRandom * viableStarts.length);
+    currentWord = viableStarts[finalIndex];
+
+    // 4. Update UI
     dateDisplay.innerText = today.toDateString();
-    
-    // Pick the same starter for everyone based on the day of the month
-    const dayIndex = today.getDate() % dailyStarters.length;
-    currentWord = dailyStarters[dayIndex];
-    
     wordDisplay.innerText = currentWord;
-    messageDisplay.innerText = "Your turn! Add a letter.";
-    messageDisplay.style.color = "gray";
+    messageDisplay.innerText = "Game Ready! Add a letter.";
     inputField.disabled = false;
     inputField.focus();
 }
