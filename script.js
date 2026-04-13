@@ -5,7 +5,11 @@ let dictionary = [];
 let currentWord = "";
 
 const today = new Date().toDateString();
-
+const ROWS = [
+    ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
+    ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
+    ["Z", "X", "C", "V", "B", "N", "M"]
+];
 const wordDisplay = document.getElementById('word-display');
 const messageDisplay = document.getElementById('message');
 const inputField = document.getElementById('letter-input');
@@ -117,6 +121,31 @@ function closeWord() {
         messageDisplay.innerText = `FAILED! "${currentWord}" is not in the dictionary.`;
         endGame(false);
     }
+}
+
+function createKeyboard() {
+    const container = document.getElementById('keyboard-container');
+    container.innerHTML = ''; // Clear it first
+
+    ROWS.forEach(row => {
+        const rowDiv = document.createElement('div');
+        rowDiv.className = 'keyboard-row';
+        
+        row.forEach(key => {
+            const button = document.createElement('div');
+            button.className = 'key';
+            button.innerText = key;
+            button.onclick = () => handleKeyPress(key);
+            rowDiv.appendChild(button);
+        });
+        container.appendChild(rowDiv);
+    });
+}
+
+function handleKeyPress(key) {
+    if (inputField.disabled) return;
+    inputField.value = key;
+    playerMove();
 }
 
 function displaySavedGame(data) {
