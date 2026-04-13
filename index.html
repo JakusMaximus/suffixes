@@ -1,19 +1,36 @@
-<div id="game-container">
-    <h1>SUFFIX</h1>
-    <p id="date-display"></p>
-    <div class="word-display" id="word-display">---</div>
-    
-    <div id="controls">
-        <div class="input-section">
-            <input type="text" id="letter-input" maxlength="1" autofocus style="opacity: 0; position: absolute;">
-            <div class="button-group">
-                <button class="btn-close" onclick="closeWord()">Close Word</button>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suffixes - Daily Word Game</title>
+    <link rel="stylesheet" href="style.css?v=1.1">
+</head>
+<body>
+
+    <div id="game-container">
+        <h1>SUFFIXES</h1>
+        <p id="date-display"></p>
+        
+        <div class="word-display" id="word-display">---</div>
+        
+        <div id="controls">
+            <div class="input-section">
+                <input type="text" id="letter-input" maxlength="1" autofocus autocomplete="off" style="opacity: 0; position: absolute; pointer-events: none;">
+                
+                <div class="button-group">
+                    <button class="btn-close" onclick="closeWord()">Close Word</button>
+                </div>
             </div>
         </div>
+
+        <div id="keyboard-container"></div>
+
+        <p class="message" id="message"></p>
+        
+        <button class="share-btn" id="share-btn" onclick="shareResult()">Share Result ⎘</button>
     </div>
 
-    <div id="keyboard-container"></div>
-
-    <p class="message" id="message"></p>
-    <button class="share-btn" id="share-btn" onclick="shareResult()">Share Result ⎘</button>
-</div>
+    <script src="script.js?v=1.1"></script>
+</body>
+</html>
