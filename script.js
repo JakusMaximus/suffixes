@@ -1,4 +1,4 @@
-// The "Brain" of the Suffix Game
+// The "Brain" of the Suffixes Game
 const DICTIONARY_URL = "https://raw.githubusercontent.com/first20hours/google-10000-english/master/google-10000-english-no-swears.txt";
 
 let dictionary = [];
@@ -26,7 +26,7 @@ async function initGame() {
     if (messageDisplay) messageDisplay.innerText = "Loading Daily Game...";
 
     // Check if player already played today
-    const savedData = JSON.parse(localStorage.getItem('suffix_daily_state'));
+    const savedData = JSON.parse(localStorage.getItem('suffixes_daily_state'));
 
     // Create keyboard if the container exists
     if (document.getElementById('keyboard-container')) {
@@ -191,7 +191,7 @@ function endGame(won) {
         word: currentWord,
         won: won
     };
-    localStorage.setItem('suffix_daily_state', JSON.stringify(gameState));
+    localStorage.setItem('suffixes_daily_state', JSON.stringify(gameState));
 
     const longer = dictionary.find(w => w.startsWith(currentWord) && w.length > currentWord.length);
     if (won && longer) {
@@ -207,7 +207,7 @@ function gameOver(msg) {
 
 function shareResult() {
     const status = messageDisplay.innerText.includes("SUCCESS") ? "🟩" : "🟥";
-    const text = `Suffix Game ${today}\n${status} Word: ${currentWord}\nhttps://jakusmaximus.github.io/suffixes/`;
+    const text = `Suffixes Game ${today}\n${status} Word: ${currentWord}\nhttps://jakusmaximus.github.io/suffixes/`;
     navigator.clipboard.writeText(text);
     alert("Copied to clipboard!");
 }
