@@ -2,7 +2,6 @@
 const DICTIONARY_URL = "https://raw.githubusercontent.com/dwyl/english-words/master/words.txt";
 
 let dictionary = [];
-const dailyStarters = ["STR", "CON", "EXT", "PRE", "INT", "PRO", "REH", "TRA", "INC", "COM"];
 let currentWord = "";
 
 const today = new Date().toDateString();
@@ -13,11 +12,19 @@ const inputField = document.getElementById('letter-input');
 const dateDisplay = document.getElementById('date-display');
 const controls = document.getElementById('controls');
 
+// TWEAK: Add Enter Key Support
+inputField.addEventListener("keypress", function(event) {
+    if (event.key === "Enter") {
+        event.preventDefault();
+        playerMove();
+    }
+});
+
 // 1. Fetch Dictionary and Start
 async function initGame() {
     messageDisplay.innerText = "Checking daily status...";
+    inputField.disabled = true; 
     
-    // Check if player already played today
     const savedData = JSON.parse(localStorage.getItem('suffix_daily_state'));
     
     try {
@@ -36,43 +43,32 @@ async function initGame() {
 }
 
 function setupDailyAutomatedGame() {
-    const today = new Date();
-    const dateSeed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+    const now = new Date();
+    const dateSeed = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
     
     let seededRandom = Math.sin(dateSeed) * 10000;
     seededRandom = seededRandom - Math.floor(seededRandom);
 
-    // 1. Get unique 3-letter starts
     const allStarts = dictionary.map(w => w.substring(0, 3)).filter(s => s.length === 3);
     const uniqueStarts = [...new Set(allStarts)];
 
-    // 2. The "Common Rule" Filter
     const viableStarts = uniqueStarts.filter(start => {
         const wordsWithStart = dictionary.filter(w => w.startsWith(start));
-        
-        // RULE A: Must have at least 20 possible routes
         const hasEnoughRoutes = wordsWithStart.length >= 20;
-        
-        // RULE B: Must lead to at least one "Common-length" word (4-7 letters)
-        // This usually filters out highly technical or obscure prefixes
         const leadsToCommonWord = wordsWithStart.some(w => w.length >= 4 && w.length <= 7);
-        
         return hasEnoughRoutes && leadsToCommonWord;
     });
 
-    // 3. Pick the starter
     const finalIndex = Math.floor(seededRandom * viableStarts.length);
     currentWord = viableStarts[finalIndex];
 
-    // 4. Update UI
-    dateDisplay.innerText = today.toDateString();
+    dateDisplay.innerText = today;
     wordDisplay.innerText = currentWord;
     messageDisplay.innerText = "Daily Challenge Loaded! Your turn.";
     inputField.disabled = false;
     inputField.focus();
 }
 
-// 2. Player Input Logic
 function playerMove() {
     const letter = inputField.value.toUpperCase();
     if (!/^[A-Z]$/.test(letter)) return;
@@ -81,7 +77,6 @@ function playerMove() {
     wordDisplay.innerText = currentWord;
     inputField.value = "";
     
-    // Check if a word can still be formed
     const possible = dictionary.some(w => w.startsWith(currentWord));
     
     if (!possible) {
@@ -93,13 +88,10 @@ function playerMove() {
     setTimeout(computerMove, 600);
 }
 
-// 3. Computer Logic
 function computerMove() {
-    // Find all valid longer words
     const possibilities = dictionary.filter(w => w.startsWith(currentWord) && w.length > currentWord.length);
     
     if (possibilities.length > 0) {
-        // Computer picks the shortest possible path to stay strategic
         possibilities.sort((a, b) => a.length - b.length);
         const target = possibilities[0];
         
@@ -107,12 +99,12 @@ function computerMove() {
         currentWord += nextLetter;
         wordDisplay.innerText = currentWord;
         messageDisplay.innerText = "Your turn!";
+        inputField.focus(); // TWEAK: Keep the focus for the player
     } else {
         gameOver("Computer is stuck! You've formed a word that can't be extended.");
     }
 }
 
-// 4. Closing & Scoring
 function closeWord() {
     const isValid = dictionary.includes(currentWord);
     
@@ -127,16 +119,34 @@ function closeWord() {
     }
 }
 
+function displaySavedGame(data) {
+    dateDisplay.innerText = data.date;
+    currentWord = data.word;
+    wordDisplay.innerText = currentWord;
+    
+    messageDisplay.style.color = data.won ? "green" : "red";
+    messageDisplay.innerText = data.won ? 
+        `You already played today! Result: SUCCESS (${currentWord})` : 
+        `You already played today! Result: FAILED (${currentWord})`;
+    
+    controls.style.display = 'none';
+    document.getElementById('share-btn').style.display = 'inline-block';
+}
+
 function endGame(won) {
     controls.style.display = 'none';
     document.getElementById('share-btn').style.display = 'inline-block';
-    
-    // Check if the game COULD have gone longer
+
+    const gameState = {
+        date: today,
+        word: currentWord,
+        won: won
+    };
+    localStorage.setItem('suffix_daily_state', JSON.stringify(gameState));
+
     const longer = dictionary.find(w => w.startsWith(currentWord) && w.length > currentWord.length);
     if (won && longer) {
         messageDisplay.innerText += `\nYou could have carried on to: ${longer}`;
-    } else if (won) {
-        messageDisplay.innerText += `\nPerfect! You reached the end of the chain.`;
     }
 }
 
@@ -148,10 +158,10 @@ function gameOver(msg) {
 
 function shareResult() {
     const status = messageDisplay.innerText.includes("SUCCESS") ? "🟩" : "🟥";
-    const text = `Suffix Game ${dateDisplay.innerText}\n${status} Final Word: ${currentWord}\nhttps://your-github-username.github.io/your-repo-name/`;
+    // TWEAK: Make sure to update your actual URL here!
+    const text = `Suffix Game ${dateDisplay.innerText}\n${status} Word: ${currentWord}\nhttps://jakusmaximus.github.io/suffixes/`;
     navigator.clipboard.writeText(text);
     alert("Copied to clipboard!");
 }
 
-// Start!
 initGame();
