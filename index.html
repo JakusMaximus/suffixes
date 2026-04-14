@@ -4,25 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Suffixes - Daily Word Game</title>
-    <link rel="stylesheet" href="style.css?v=12.0">
+    <link rel="stylesheet" href="style.css?v=13.0">
 </head>
 <body>
 
     <div id="game-container">
         <header>
-    <div class="top-bar">
-        <button class="icon-btn" id="theme-toggle" onclick="toggleTheme()">🌓</button>
-        <h1 style="margin:0">SUFFIXES</h1>
-        <button class="icon-btn" id="stats-toggle" onclick="showStats()">📊</button>
-    </div>
-    <p id="date-display"></p>
-</header>
+            <div class="top-bar">
+                <button class="icon-btn" id="theme-toggle" onclick="toggleTheme()">🌓</button>
+                <h1 style="margin:0">SUFFIXES</h1>
+                <div style="display: flex; gap: 5px;">
+                    <button class="icon-btn" onclick="showInstructions()">ℹ️</button>
+                    <button class="icon-btn" id="stats-toggle" onclick="showStats()">📊</button>
+                </div>
+            </div>
+            <p id="date-display"></p>
+        </header>
 
         <div id="main-stage">
             <div id="loading-display">Loading Dictionary...</div>
-            <div id="instructions" style="display: none;">
-                Add a letter, then <strong>Pass</strong> to the computer or <strong>Claim</strong> a valid word. What's the longest word you can claim?
-            </div>
+            <div id="longest-word-hint" style="font-size: 0.8rem; color: #6c757d; margin-bottom: 10px;"></div>
             <div class="word-display" id="word-display" style="display: none;"></div>
             <div id="solution-display"></div>
         </div>
@@ -48,6 +49,18 @@
         </div>
     </div>
 
-    <script src="script.js?v=12.0"></script>
+    <div id="instructions-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeInstructions()">&times;</span>
+            <h2 style="margin-top:0">How to Play</h2>
+            <p>Add one letter to the string, then either <strong>Pass</strong> to the computer or <strong>Claim</strong> the word.</p>
+            <p>• If you <strong>Claim</strong>, the string must be a valid word in the dictionary.<br>
+               • If you <strong>Pass</strong>, the computer will add a letter.</p>
+            <p><em>Note: The computer always tries to form the <strong>shortest</strong> possible word.</em></p>
+            <button class="btn-pass" style="margin-top:20px; width:100%" onclick="closeInstructions()">Got it!</button>
+        </div>
+    </div>
+
+    <script src="script.js?v=13.0"></script>
 </body>
 </html>
