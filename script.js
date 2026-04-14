@@ -5,11 +5,10 @@ let dailySeedValue = 0;
 const todayString = new Date().toDateString();
 
 let hasAddedLetterThisTurn = false;
-let wordDisplay, loadingDisplay, instructions, messageDisplay, passBtn, claimBtn, solutionDisplay;
+let wordDisplay, loadingDisplay, messageDisplay, passBtn, claimBtn, solutionDisplay, longestHintDisplay;
 
 // --- INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', () => {
-    // Load Theme
     if (localStorage.getItem('suffix_theme') === 'dark') {
         document.documentElement.setAttribute('data-theme', 'dark');
     }
@@ -25,11 +24,11 @@ function getSeededRandom(additionalShift = 0) {
 async function initGame() {
     wordDisplay = document.getElementById('word-display');
     loadingDisplay = document.getElementById('loading-display');
-    instructions = document.getElementById('instructions');
     messageDisplay = document.getElementById('message');
     passBtn = document.getElementById('pass-btn');
     claimBtn = document.getElementById('claim-btn');
     solutionDisplay = document.getElementById('solution-display');
+    longestHintDisplay = document.getElementById('longest-word-hint');
 
     const savedData = JSON.parse(localStorage.getItem('suffix_daily_state'));
     createKeyboard();
@@ -45,10 +44,15 @@ async function initGame() {
         if (loadingDisplay) loadingDisplay.style.display = 'none';
         if (wordDisplay) wordDisplay.style.display = 'block';
 
+        // Check for first time visitor
+        if (!localStorage.getItem('suffix_visited')) {
+            showInstructions();
+            localStorage.setItem('suffix_visited', 'true');
+        }
+
         if (savedData && savedData.date === todayString) {
             displaySavedGame(savedData);
         } else {
-            if (instructions) instructions.style.display = 'block';
             setupDailyGame();
         }
     } catch (e) {
@@ -66,6 +70,11 @@ function setupDailyGame() {
     const startIndex = Math.floor(getSeededRandom(0) * viable.length);
     currentWord = viable[startIndex];
     
+    // Find longest possible word for today's start
+    const possibilities = dictionary.filter(w => w.startsWith(currentWord));
+    const longest = possibilities.reduce((a, b) => a.length > b.length ? a : b, "");
+    longestHintDisplay.innerText = `Today's potential: Up to ${longest.length} letters`;
+
     document.getElementById('date-display').innerText = todayString;
     wordDisplay.innerText = currentWord;
     messageDisplay.innerText = "Your turn! Add one letter.";
@@ -76,7 +85,6 @@ function setupDailyGame() {
 
 function handleKeyPress(key) {
     if (hasAddedLetterThisTurn) return;
-    if (instructions) instructions.style.display = 'none';
     
     const tempWord = (currentWord + key).toUpperCase();
     const exists = dictionary.some(w => w.startsWith(tempWord));
@@ -119,14 +127,11 @@ function triggerComputer() {
         let possibilities = dictionary.filter(w => w.startsWith(currentWord) && w.length > currentWord.length);
         
         if (possibilities.length > 0) {
-            // Favor common lengths (4-8 letters) to avoid obscure long words
-            let commonOptions = possibilities.filter(w => w.length <= 8);
-            let finalOptions = commonOptions.length > 0 ? commonOptions : possibilities;
+            // Computer logic: Shortest possible word
+            possibilities.sort((a, b) => a.length - b.length || a.localeCompare(b));
+            const shortestLen = possibilities[0].length;
+            const shortestOptions = possibilities.filter(w => w.length === shortestLen);
             
-            finalOptions.sort((a, b) => (a.length - b.length) || a.localeCompare(b));
-            
-            const shortestLen = finalOptions[0].length;
-            const shortestOptions = finalOptions.filter(w => w.length === shortestLen);
             const seedShift = currentWord.length; 
             const index = Math.floor(getSeededRandom(seedShift) * shortestOptions.length);
             const chosenWord = shortestOptions[index];
@@ -157,7 +162,68 @@ function claimWord() {
     }
 }
 
-// --- KEYBOARD ---
+// --- STATS & STORAGE ---
+function endGame(won, alreadyPlayed = false) {
+    hasAddedLetterThisTurn = true; 
+    document.getElementById('controls').style.display = 'none';
+    document.getElementById('keyboard-container').style.display = 'none';
+    document.getElementById('share-btn').style.display = 'inline-block';
+
+    if (!alreadyPlayed) {
+        const savedData = JSON.parse(localStorage.getItem('suffix_daily_state'));
+        let newStreak = won ? 1 : 0; // Default: streak starts at 1 if won, 0 if lost
+
+        if (savedData && savedData.date) {
+            const lastDate = new Date(savedData.date);
+            const todayDate = new Date(todayString);
+            const diffDays = Math.floor((todayDate - lastDate) / (1000 * 3600 * 24));
+            
+            if (won) {
+                if (diffDays === 1) newStreak = (savedData.streak || 0) + 1;
+                else if (diffDays === 0) newStreak = savedData.streak || 1;
+            } else {
+                newStreak = 0; // Streak ends on failure
+            }
+        }
+
+        const state = { date: todayString, word: currentWord, won: won, streak: newStreak };
+        localStorage.setItem('suffix_daily_state', JSON.stringify(state));
+        updateStats(won, newStreak);
+    }
+    revealSolutions();
+}
+
+function updateStats(won, streak) {
+    let stats = JSON.parse(localStorage.getItem('suffix_stats')) || { played: 0, wins: 0, maxStreak: 0, currentStreak: 0 };
+    stats.played++;
+    if (won) stats.wins++;
+    stats.currentStreak = streak;
+    stats.maxStreak = Math.max(stats.maxStreak, streak);
+    localStorage.setItem('suffix_stats', JSON.stringify(stats));
+}
+
+function revealSolutions() {
+    const options = dictionary.filter(w => w.startsWith(currentWord) && w.length > currentWord.length);
+    let solutionText = "";
+
+    // What the computer could have done next (shortest)
+    if (options.length > 0) {
+        options.sort((a,b) => a.length - b.length);
+        solutionText += `Shortest path: ${options[0]}`;
+    }
+
+    // Longest possible word from where we stopped
+    const allOptions = dictionary.filter(w => w.startsWith(currentWord));
+    if (allOptions.length > 0) {
+        allOptions.sort((a,b) => b.length - a.length);
+        if (solutionText !== "") solutionText += " | ";
+        solutionText += `Longest possible: ${allOptions[0]}`;
+    }
+
+    solutionDisplay.innerText = solutionText;
+}
+
+// --- UI HELPERS ---
 function createKeyboard() {
     const container = document.getElementById('keyboard-container');
     if (!container) return;
@@ -186,41 +252,6 @@ function createKeyboard() {
     });
 }
 
-// --- STATS & STORAGE ---
-function endGame(won, alreadyPlayed = false) {
-    hasAddedLetterThisTurn = true; 
-    document.getElementById('controls').style.display = 'none';
-    document.getElementById('keyboard-container').style.display = 'none';
-    document.getElementById('share-btn').style.display = 'inline-block';
-
-    if (!alreadyPlayed) {
-        const savedData = JSON.parse(localStorage.getItem('suffix_daily_state'));
-        let newStreak = 1;
-
-        if (savedData && savedData.date) {
-            const lastDate = new Date(savedData.date);
-            const todayDate = new Date(todayString);
-            const diffDays = Math.floor((todayDate - lastDate) / (1000 * 3600 * 24));
-            if (diffDays === 1) newStreak = (savedData.streak || 0) + 1;
-            else if (diffDays === 0) newStreak = savedData.streak || 1;
-        }
-
-        const state = { date: todayString, word: currentWord, won: won, streak: newStreak };
-        localStorage.setItem('suffix_daily_state', JSON.stringify(state));
-        updateStats(won, newStreak);
-    }
-    if (!won) revealSolution();
-}
-
-function updateStats(won, streak) {
-    let stats = JSON.parse(localStorage.getItem('suffix_stats')) || { played: 0, wins: 0, maxStreak: 0 };
-    stats.played++;
-    if (won) stats.wins++;
-    stats.maxStreak = Math.max(stats.maxStreak, streak);
-    stats.currentStreak = streak;
-    localStorage.setItem('suffix_stats', JSON.stringify(stats));
-}
-
 function showStats() {
     const stats = JSON.parse(localStorage.getItem('suffix_stats')) || { played: 0, wins: 0, currentStreak: 0, maxStreak: 0 };
     const winPct = stats.played ? Math.round((stats.wins / stats.played) * 100) : 0;
@@ -235,20 +266,14 @@ function showStats() {
 }
 
 function closeStats() { document.getElementById('stats-modal').style.display = 'none'; }
+function showInstructions() { document.getElementById('instructions-modal').style.display = 'block'; }
+function closeInstructions() { document.getElementById('instructions-modal').style.display = 'none'; }
 
 function toggleTheme() {
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     const target = isDark ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', target);
     localStorage.setItem('suffix_theme', target);
-}
-
-function revealSolution() {
-    const options = dictionary.filter(w => w.startsWith(currentWord) && w.length > currentWord.length);
-    if (options.length > 0) {
-        options.sort((a,b) => a.length - b.length);
-        solutionDisplay.innerText = `Computer was thinking of: ${options[0]}`;
-    }
 }
 
 function displaySavedGame(data) {
@@ -263,7 +288,7 @@ function shareResult() {
     const savedData = JSON.parse(localStorage.getItem('suffix_daily_state'));
     if(!savedData) return;
     const len = currentWord.length;
-    const streak = savedData.streak || 1;
+    const streak = savedData.streak || 0;
     let squares = "";
     for(let i = 0; i < len; i++) squares += (!savedData.won && i === len - 1) ? "🟥" : "🟩";
     const text = `Suffix Game ${todayString}\n${squares} (${len} letters)\nStreak: ${streak} ${streak >= 3 ? '🔥' : ''}\nhttps://jakusmaximus.github.io/suffixes/`;
