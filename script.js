@@ -59,23 +59,73 @@ async function initGame() {
     }
 }
 
-// --- LOGIC FOR TRUE LONGEST WORD ---
-function findTrueLongestWord(start) {
-    // This finds the longest word reachable where no sub-words are completed along the way
-    let words = dictionary.filter(w => w.startsWith(start));
-    let validLongWords = words.filter(w => {
-        // Check every prefix from length 4 up to the word's length minus 1
-        for (let i = 4; i < w.length; i++) {
-            if (dictionary.includes(w.substring(0, i))) return false;
-        }
-        return true;
-    });
+// --- CORE LOGIC: SIMULATING THE "BEST" POSSIBLE GAME ---
 
-    if (validLongWords.length === 0) return start;
-    return validLongWords.reduce((a, b) => a.length > b.length ? a : b, "");
+// 1. Helper: What is the shortest word reachable from this string?
+function getShortestWordLength(str) {
+    let options = dictionary.filter(w => w.startsWith(str));
+    if (options.length === 0) return Infinity;
+    return Math.min(...options.map(w => w.length));
+}
+
+// 2. Main Logic: Simulate a game where Player maximizes and Computer minimizes length
+function findTrueLongestWord(startStr) {
+    let current = startStr;
+    
+    // We simulate the game until no more moves are possible
+    // Note: This is a simplified simulation of the "Golden Path"
+    while (true) {
+        let possibleNextLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").filter(l => 
+            dictionary.some(w => w.startsWith(current + l))
+        );
+
+        if (possibleNextLetters.length === 0) break;
+
+        // PLAYER TURN (Your first move or after computer move)
+        // You want to pick the letter that results in the HIGHEST "shortest word"
+        let bestLetter = "";
+        let maxShortestPath = -1;
+
+        for (let l of possibleNextLetters) {
+            let shortestForThisLetter = getShortestWordLength(current + l);
+            if (shortestForThisLetter > maxShortestPath) {
+                maxShortestPath = shortestForThisLetter;
+                bestLetter = l;
+            }
+        }
+        
+        current += bestLetter;
+        
+        // Check if the current string is now a word (End of simulation path)
+        if (dictionary.includes(current)) break;
+
+        // COMPUTER TURN
+        // The computer will add the letter that leads to the SHORTEST word
+        let compLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").filter(l => 
+            dictionary.some(w => w.startsWith(current + l))
+        );
+        
+        if (compLetters.length === 0) break;
+
+        let minShortestPath = Infinity;
+        let compLetter = "";
+
+        for (let l of compLetters) {
+            let shortest = getShortestWordLength(current + l);
+            if (shortest < minShortestPath) {
+                minShortestPath = shortest;
+                compLetter = l;
+            }
+        }
+        
+        current += compLetter;
+        if (dictionary.includes(current)) break;
+    }
+    return current;
 }
 
 // --- GAMEPLAY ---
+
 function setupDailyGame() {
     const allStarts = dictionary.map(w => w.substring(0, 3)).filter(s => s.length === 3);
     const counts = {};
@@ -85,6 +135,7 @@ function setupDailyGame() {
     const startIndex = Math.floor(getSeededRandom(0) * viable.length);
     currentWord = viable[startIndex];
     
+    // Update the hint with the simulation result
     const bestWord = findTrueLongestWord(currentWord);
     longestHintDisplay.innerText = `Today's potential: Up to ${bestWord.length} letters`;
 
@@ -139,9 +190,18 @@ function triggerComputer() {
         let possibilities = dictionary.filter(w => w.startsWith(currentWord) && w.length > currentWord.length);
         
         if (possibilities.length > 0) {
-            possibilities.sort((a, b) => a.length - b.length || a.localeCompare(b));
-            const chosenWord = possibilities[0];
-            currentWord += chosenWord[currentWord.length].toUpperCase();
+            // Computer logic: Pick the letter that leads to the shortest word
+            let letters = {};
+            possibilities.forEach(w => {
+                let l = w[currentWord.length];
+                if (!letters[l] || w.length < letters[l]) {
+                    letters[l] = w.length;
+                }
+            });
+
+            let bestLetter = Object.keys(letters).reduce((a, b) => letters[a] < letters[b] ? a : b);
+            
+            currentWord += bestLetter.toUpperCase();
             wordDisplay.innerText = currentWord;
             
             hasAddedLetterThisTurn = false; 
@@ -175,20 +235,7 @@ function endGame(won, alreadyPlayed = false) {
 
     if (!alreadyPlayed) {
         const savedData = JSON.parse(localStorage.getItem('suffix_daily_state'));
-        let newStreak = won ? 1 : 0;
-
-        if (savedData && savedData.date) {
-            const lastDate = new Date(savedData.date);
-            const todayDate = new Date(todayString);
-            const diffDays = Math.floor((todayDate - lastDate) / (1000 * 3600 * 24));
-            
-            if (won) {
-                if (diffDays === 1) newStreak = (savedData.streak || 0) + 1;
-                else if (diffDays === 0) newStreak = savedData.streak || 1;
-            } else {
-                newStreak = 0; 
-            }
-        }
+        let newStreak = won ? (savedData && savedData.streak ? savedData.streak + 1 : 1) : 0;
 
         const state = { date: todayString, word: currentWord, won: won, streak: newStreak };
         localStorage.setItem('suffix_daily_state', JSON.stringify(state));
@@ -207,8 +254,9 @@ function updateStats(won, streak) {
 }
 
 function revealSolutions() {
-    const bestPossibleOverall = findTrueLongestWord(currentWord.substring(0,3));
-    solutionDisplay.innerText = `Today's longest possible: ${bestPossibleOverall}`;
+    const startStr = currentWord.substring(0,3);
+    const bestPossible = findTrueLongestWord(startStr);
+    solutionDisplay.innerText = `Ideal outcome was: ${bestPossible}`;
 }
 
 // --- UI HELPERS ---
@@ -265,9 +313,7 @@ function shareResult() {
     if(!savedData) return;
     const len = currentWord.length;
     const streak = savedData.streak || 0;
-    let squares = "";
-    for(let i = 0; i < len; i++) squares += (!savedData.won && i === len - 1) ? "🟥" : "🟩";
-    const text = `Suffix Game ${todayString}\n${squares} (${len} letters)\nStreak: ${streak}\nhttps://jakusmaximus.github.io/suffixes/`;
+    const text = `Suffix Game ${todayString}\n${len} letters\nStreak: ${streak}\nhttps://jakusmaximus.github.io/suffixes/`;
     navigator.clipboard.writeText(text).then(() => alert("Copied to clipboard!"));
 }
 function gameOver(msg) {
