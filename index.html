@@ -4,9 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Suffixes - Daily Word Game</title>
-    <link rel="stylesheet" href="style.css?v=14.1">
+    <link rel="stylesheet" href="style.css?v=15.0">
 </head>
 <body>
+
     <div id="game-container">
         <header>
             <div class="top-bar">
@@ -40,24 +41,23 @@
     <div id="stats-modal" class="modal">
         <div class="modal-content">
             <span class="close-btn" onclick="closeStats()">&times;</span>
-            <h2>Statistics</h2>
+            <h2 style="margin-top:0">Statistics</h2>
             <div id="stats-body"></div>
-            <button class="btn-pass" style="width:100%; margin-top:20px" onclick="closeStats()">Close</button>
+            <button class="btn-pass" style="margin-top:20px; width:100%" onclick="closeStats()">Close</button>
         </div>
     </div>
 
     <div id="instructions-modal" class="modal">
         <div class="modal-content">
             <span class="close-btn" onclick="closeInstructions()">&times;</span>
-            <h2>How to Play</h2>
-            <p>Add one letter, then <strong>Pass</strong> or <strong>Claim</strong>.</p>
-            <p>If you claim a word, it must be valid. If you pass, the computer will add a letter.</p>
-            <p>The computer is always trying to form the <strong>shortest</strong> possible word</p>
-            <p>What's the longest word you can make?</p>
-            <button class="btn-pass" style="width:100%; margin-top:20px" onclick="closeInstructions()">Got it!</button>
+            <h2 style="margin-top:0">How to Play</h2>
+            <p>Add a letter, then <strong>Pass</strong> or <strong>Claim</strong>.</p>
+            <p>If you <strong>Pass</strong>, the computer adds a letter.</p>
+            <p><em>Note: The computer always tries to create the <strong>shortest possible word</strong>.</em></p>
+            <button class="btn-pass" style="margin-top:20px; width:100%" onclick="closeInstructions()">Start Game</button>
         </div>
     </div>
 
-    <script src="script.js?v=14.1"></script>
+    <script src="script.js?v=15.0"></script>
 </body>
 </html>
