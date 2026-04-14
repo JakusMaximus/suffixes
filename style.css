@@ -28,7 +28,6 @@ body {
     align-items: center;
     min-height: 100vh;
     transition: background-color 0.3s ease;
-    touch-action: manipulation;
 }
 
 #game-container {
@@ -41,41 +40,12 @@ body {
     box-sizing: border-box;
 }
 
-header {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-bottom: 5px;
-}
-
 .top-bar {
     display: flex;
     justify-content: space-between;
     align-items: center;
     width: 100%;
     max-width: 320px;
-    margin: 0 auto;
-}
-
-#date-display {
-    text-align: center;
-    width: 100%;
-    margin: 8px 0;
-    color: #6c757d;
-    font-size: 0.9rem;
-    font-weight: 500;
-}
-
-.icon-btn {
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    cursor: pointer;
-    color: var(--text-color);
-    padding: 5px;
-    display: flex;
-    align-items: center;
 }
 
 #main-stage {
@@ -85,12 +55,6 @@ header {
     justify-content: center;
     align-items: center;
     text-align: center;
-    width: 100%;
-}
-
-@keyframes pop {
-    0% { transform: scale(0.8); opacity: 0.5; }
-    100% { transform: scale(1); opacity: 1; }
 }
 
 .word-display {
@@ -98,14 +62,6 @@ header {
     font-weight: 800;
     letter-spacing: 4px;
     text-transform: uppercase;
-    animation: pop 0.15s ease-out;
-}
-
-#longest-word-hint {
-    font-size: 0.85rem;
-    color: #6c757d;
-    margin-bottom: 5px;
-    font-weight: 500;
 }
 
 #solution-display {
@@ -113,14 +69,9 @@ header {
     font-style: italic;
     font-size: 0.9rem;
     color: var(--accent-primary);
-    min-height: 1.2em;
 }
 
-#controls { 
-    display: flex; 
-    gap: 10px; 
-    margin-bottom: 20px; 
-}
+#controls { display: flex; gap: 10px; margin-bottom: 20px; }
 
 button {
     padding: 12px 24px;
@@ -128,14 +79,6 @@ button {
     border: none;
     font-weight: 700;
     cursor: pointer;
-    box-shadow: var(--shadow);
-}
-
-button:disabled {
-    background-color: #ced4da !important;
-    color: #6c757d !important;
-    opacity: 0.6;
-    cursor: not-allowed;
 }
 
 .btn-claim { background: var(--text-color); color: var(--bg-color); }
@@ -158,24 +101,6 @@ button:disabled {
     cursor: pointer;
 }
 
-.key:active {
-    transform: translateY(2px);
-    border-bottom-width: 1px;
-}
-
-.key-back { 
-    width: clamp(50px, 12vw, 65px); 
-    background-color: #adb5bd; 
-    color: white;
-}
-
-.message { 
-    font-weight: 600; 
-    margin: 15px 0; 
-    text-align: center; 
-}
-
-/* Modals */
 .modal {
     display: none;
     position: fixed;
@@ -186,35 +111,25 @@ button:disabled {
 
 .modal-content {
     background-color: var(--modal-bg);
-    margin: 12vh auto;
+    margin: 15vh auto;
     padding: 30px;
     border-radius: 15px;
-    width: 85%;
-    max-width: 350px;
+    width: 80%;
+    max-width: 320px;
     position: relative;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     color: var(--text-color);
-}
-
-.modal-content h2 {
-    margin-top: 0;
-}
-
-.modal-content p {
-    line-height: 1.5;
-    font-size: 0.95rem;
 }
 
 .close-btn {
     position: absolute;
     right: 15px; top: 10px;
-    font-size: 28px; font-weight: bold; cursor: pointer;
+    font-size: 24px; cursor: pointer;
+}
+
+.icon-btn {
+    background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-color);
 }
 
 .share-btn { 
-    background: var(--accent-success); 
-    color: white; 
-    display: none; 
-    width: 220px; 
-    margin-top: 10px;
+    background: var(--accent-success); color: white; display: none; margin-top: 10px;
 }
