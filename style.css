@@ -37,7 +37,7 @@ body {
     padding: 20px;
     display: flex;
     flex-direction: column;
-    align-items: center; /* Keeps everything horizontally centered */
+    align-items: center;
     box-sizing: border-box;
 }
 
@@ -104,9 +104,10 @@ header {
 #solution-display {
     margin-top: 10px;
     font-style: italic;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     color: var(--accent-primary);
     min-height: 1.2em;
+    line-height: 1.4;
 }
 
 #controls { 
@@ -178,11 +179,11 @@ button:disabled {
 
 .modal-content {
     background-color: var(--modal-bg);
-    margin: 15vh auto;
+    margin: 10vh auto;
     padding: 30px;
     border-radius: 15px;
-    width: 80%;
-    max-width: 320px;
+    width: 85%;
+    max-width: 350px;
     position: relative;
     box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     color: var(--text-color);
