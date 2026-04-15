@@ -1,5 +1,9 @@
 const DICTIONARY_URL = "https://raw.githubusercontent.com/dwyl/english-words/master/words_dictionary.json";
+// Using a 10,000 common words list
+const COMMON_WORDS_URL = "https://raw.githubusercontent.com/first20hours/google-10000-english/master/google-10000-english-no-swears.txt";
+
 let dictionary = [];
+let commonWords = [];
 let currentWord = "";
 let dailySeedValue = 0; 
 const todayString = new Date().toDateString();
@@ -37,9 +41,16 @@ async function initGame() {
     dailySeedValue = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
 
     try {
-        const response = await fetch(DICTIONARY_URL);
-        const data = await response.json();
-        dictionary = Object.keys(data).map(w => w.toUpperCase()).filter(w => w.length > 2);
+        const [dictRes, commonRes] = await Promise.all([
+            fetch(DICTIONARY_URL),
+            fetch(COMMON_WORDS_URL)
+        ]);
+
+        const dictData = await dictRes.json();
+        dictionary = Object.keys(dictData).map(w => w.toUpperCase()).filter(w => w.length > 2);
+        
+        const commonText = await commonRes.text();
+        commonWords = commonText.split('\n').map(w => w.trim().toUpperCase()).filter(w => w.length > 2);
 
         if (loadingDisplay) loadingDisplay.style.display = 'none';
         if (wordDisplay) wordDisplay.style.display = 'block';
@@ -59,33 +70,24 @@ async function initGame() {
     }
 }
 
-// --- CORE LOGIC: SIMULATING THE "BEST" POSSIBLE GAME ---
+// --- CORE LOGIC ---
 
-// 1. Helper: What is the shortest word reachable from this string?
 function getShortestWordLength(str) {
     let options = dictionary.filter(w => w.startsWith(str));
     if (options.length === 0) return Infinity;
     return Math.min(...options.map(w => w.length));
 }
 
-// 2. Main Logic: Simulate a game where Player maximizes and Computer minimizes length
 function findTrueLongestWord(startStr) {
     let current = startStr;
-    
-    // We simulate the game until no more moves are possible
-    // Note: This is a simplified simulation of the "Golden Path"
     while (true) {
         let possibleNextLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").filter(l => 
             dictionary.some(w => w.startsWith(current + l))
         );
-
         if (possibleNextLetters.length === 0) break;
 
-        // PLAYER TURN (Your first move or after computer move)
-        // You want to pick the letter that results in the HIGHEST "shortest word"
         let bestLetter = "";
         let maxShortestPath = -1;
-
         for (let l of possibleNextLetters) {
             let shortestForThisLetter = getShortestWordLength(current + l);
             if (shortestForThisLetter > maxShortestPath) {
@@ -93,23 +95,16 @@ function findTrueLongestWord(startStr) {
                 bestLetter = l;
             }
         }
-        
         current += bestLetter;
-        
-        // Check if the current string is now a word (End of simulation path)
         if (dictionary.includes(current)) break;
 
-        // COMPUTER TURN
-        // The computer will add the letter that leads to the SHORTEST word
         let compLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").filter(l => 
             dictionary.some(w => w.startsWith(current + l))
         );
-        
         if (compLetters.length === 0) break;
 
         let minShortestPath = Infinity;
         let compLetter = "";
-
         for (let l of compLetters) {
             let shortest = getShortestWordLength(current + l);
             if (shortest < minShortestPath) {
@@ -117,7 +112,6 @@ function findTrueLongestWord(startStr) {
                 compLetter = l;
             }
         }
-        
         current += compLetter;
         if (dictionary.includes(current)) break;
     }
@@ -130,12 +124,18 @@ function setupDailyGame() {
     const allStarts = dictionary.map(w => w.substring(0, 3)).filter(s => s.length === 3);
     const counts = {};
     allStarts.forEach(s => counts[s] = (counts[s] || 0) + 1);
-    const viable = Object.keys(counts).filter(s => counts[s] >= 150 && /[AEIOUY]/.test(s));
+
+    const viable = Object.keys(counts).filter(s => {
+        const hasVowel = /[AEIOUY]/.test(s);
+        const countHigh = counts[s] >= 150;
+        // Check against the 10,000 common words list
+        const commonCount = commonWords.filter(w => w.startsWith(s)).length;
+        return hasVowel && countHigh && commonCount >= 3;
+    });
 
     const startIndex = Math.floor(getSeededRandom(0) * viable.length);
     currentWord = viable[startIndex];
     
-    // Update the hint with the simulation result
     const bestWord = findTrueLongestWord(currentWord);
     longestHintDisplay.innerText = `Today's potential: Up to ${bestWord.length} letters`;
 
@@ -149,21 +149,14 @@ function setupDailyGame() {
 
 function handleKeyPress(key) {
     if (hasAddedLetterThisTurn) return;
-    const tempWord = (currentWord + key).toUpperCase();
-    const exists = dictionary.some(w => w.startsWith(tempWord));
     
-    if (!exists) {
-        currentWord = tempWord;
-        wordDisplay.innerText = currentWord;
-        gameOver(`No words start with "${currentWord}".`);
-    } else {
-        currentWord = tempWord;
-        wordDisplay.innerText = currentWord;
-        hasAddedLetterThisTurn = true; 
-        if (passBtn) passBtn.disabled = false;
-        if (claimBtn) claimBtn.disabled = false;
-        messageDisplay.innerText = "Claim or Pass Turn?";
-    }
+    currentWord = (currentWord + key).toUpperCase();
+    wordDisplay.innerText = currentWord;
+    hasAddedLetterThisTurn = true; 
+
+    if (passBtn) passBtn.disabled = false;
+    if (claimBtn) claimBtn.disabled = false;
+    messageDisplay.innerText = "Claim or Pass Turn?";
 }
 
 function handleBackspace() {
@@ -171,12 +164,23 @@ function handleBackspace() {
     currentWord = currentWord.slice(0, -1);
     wordDisplay.innerText = currentWord;
     hasAddedLetterThisTurn = false; 
+    
+    messageDisplay.innerText = "Your turn! Add one letter.";
+    
     if (passBtn) passBtn.disabled = true;
     if (claimBtn) claimBtn.disabled = true;
 }
 
 function passTurn() {
     if (!hasAddedLetterThisTurn) return;
+    
+    // Path validity check moved here (the point of no return)
+    const pathExists = dictionary.some(w => w.startsWith(currentWord));
+    if (!pathExists) {
+        gameOver(`Loss! No words start with "${currentWord}".`);
+        return;
+    }
+    
     triggerComputer();
 }
 
@@ -190,7 +194,6 @@ function triggerComputer() {
         let possibilities = dictionary.filter(w => w.startsWith(currentWord) && w.length > currentWord.length);
         
         if (possibilities.length > 0) {
-            // Computer logic: Pick the letter that leads to the shortest word
             let letters = {};
             possibilities.forEach(w => {
                 let l = w[currentWord.length];
@@ -236,7 +239,6 @@ function endGame(won, alreadyPlayed = false) {
     if (!alreadyPlayed) {
         const savedData = JSON.parse(localStorage.getItem('suffix_daily_state'));
         let newStreak = won ? (savedData && savedData.streak ? savedData.streak + 1 : 1) : 0;
-
         const state = { date: todayString, word: currentWord, won: won, streak: newStreak };
         localStorage.setItem('suffix_daily_state', JSON.stringify(state));
         updateStats(won, newStreak);
@@ -295,12 +297,14 @@ function showStats() {
 function closeStats() { document.getElementById('stats-modal').style.display = 'none'; }
 function showInstructions() { document.getElementById('instructions-modal').style.display = 'block'; }
 function closeInstructions() { document.getElementById('instructions-modal').style.display = 'none'; }
+
 function toggleTheme() {
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     const target = isDark ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', target);
     localStorage.setItem('suffix_theme', target);
 }
+
 function displaySavedGame(data) {
     currentWord = data.word;
     wordDisplay.innerText = currentWord;
@@ -308,14 +312,24 @@ function displaySavedGame(data) {
     messageDisplay.innerText = data.won ? `Result: SUCCESS` : `Result: FAILED`;
     endGame(data.won, true);
 }
+
 function shareResult() {
     const savedData = JSON.parse(localStorage.getItem('suffix_daily_state'));
     if(!savedData) return;
+    
     const len = currentWord.length;
     const streak = savedData.streak || 0;
-    const text = `Suffix Game ${todayString}\n${len} letters\nStreak: ${streak}\nhttps://jakusmaximus.github.io/suffixes/`;
+    
+    // Generate square grid string
+    let squares = "🟩".repeat(len);
+    if (!savedData.won) {
+        squares += "🟥";
+    }
+
+    const text = `Suffix Game ${todayString}\n${squares}\n${len} letters\nStreak: ${streak}\nhttps://jakusmaximus.github.io/suffixes/`;
     navigator.clipboard.writeText(text).then(() => alert("Copied to clipboard!"));
 }
+
 function gameOver(msg) {
     messageDisplay.style.color = "#dc3545";
     messageDisplay.innerText = msg;
