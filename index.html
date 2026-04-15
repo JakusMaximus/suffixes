@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Suffixes - Daily Word Game</title>
-    <link rel="stylesheet" href="style.css?v=19.0">
+    <link rel="stylesheet" href="style.css?v=20.0">
 </head>
 <body>
 
@@ -30,7 +30,7 @@
         
         <div id="controls">
             <button class="btn-claim" id="claim-btn" onclick="claimWord()">Claim Word</button>
-            <button class="btn-pass" id="pass-btn" onclick="passTurn()">Pass Turn</button>
+            <button class="btn-pass" id="pass-btn" onclick="passTurn()">Pass</button>
         </div>
 
         <div id="keyboard-container"></div>
@@ -53,11 +53,12 @@
             <h2 style="margin-top:0">How to Play</h2>
             <p>Add a letter, then <strong>Pass</strong> or <strong>Claim</strong>.</p>
             <p>If you <strong>Pass</strong>, the computer adds a letter.</p>
+            <p>What's the longest word you can make?</p>
             <p><em>Note: The computer always tries to create the <strong>shortest possible word</strong>.</em></p>
             <button class="btn-pass" style="margin-top:20px; width:100%" onclick="closeInstructions()">Start Game</button>
         </div>
     </div>
 
-    <script src="script.js?v=19.0"></script>
+    <script src="script.js?v=20.0"></script>
 </body>
 </html>
