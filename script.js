@@ -338,7 +338,8 @@ function shareResult() {
         squares += "🟥";
     }
 
-    const text = `Suffix Game ${todayString}\n${squares}\n${len} letters\nStreak: ${streak}\nhttps://jakusmaximus.github.io/suffixes/`;
+    // UPDATE THE URL BELOW:
+    const text = `Suffix Game ${todayString}\n${squares}\n${len} letters\nStreak: ${streak}\nhttps://suffixesgame.com/`;
     navigator.clipboard.writeText(text).then(() => alert("Copied to clipboard!"));
 }
 
