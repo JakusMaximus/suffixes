@@ -1,3 +1,4 @@
+// Using the raw link to avoid CORS/loading issues
 const DICTIONARY_URL = "https://raw.githubusercontent.com/cmcmarrow/scrabble-dictionary/master/collins_scrabble_words_2021.txt";
 
 let dictionary = [];
@@ -39,12 +40,16 @@ async function initGame() {
 
     try {
         const response = await fetch(DICTIONARY_URL);
+        if (!response.ok) throw new Error("Network response was not ok");
+        
         const text = await response.text();
         
-        // Scrabble files are usually one word per line
-        dictionary = text.split('\n')
+        // Split by newline and clean up
+        dictionary = text.split(/\r?\n/)
             .map(w => w.trim().toUpperCase())
             .filter(w => w.length > 2 && /^[A-Z]+$/.test(w));
+
+        if (dictionary.length === 0) throw new Error("Dictionary is empty");
 
         if (loadingDisplay) loadingDisplay.style.display = 'none';
         if (wordDisplay) wordDisplay.style.display = 'block';
@@ -60,7 +65,8 @@ async function initGame() {
             setupDailyGame();
         }
     } catch (e) {
-        if (loadingDisplay) loadingDisplay.innerText = "Error Loading Scrabble Dictionary.";
+        console.error("Load error:", e);
+        if (loadingDisplay) loadingDisplay.innerText = "Error Loading Dictionary. Please refresh.";
     }
 }
 
@@ -74,7 +80,10 @@ function getShortestWordLength(str) {
 
 function findTrueLongestWord(startStr) {
     let current = startStr;
-    while (true) {
+    // Safety break to prevent infinite loops in simulation
+    let iterations = 0;
+    while (iterations < 50) {
+        iterations++;
         let possibleNextLetters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").filter(l => 
             dictionary.some(w => w.startsWith(current + l))
         );
@@ -115,20 +124,24 @@ function findTrueLongestWord(startStr) {
 // --- GAMEPLAY ---
 
 function setupDailyGame() {
-    // Generate 3-letter starts
+    // Generate all 3-letter starts from the actual dictionary
     const allStarts = dictionary.map(w => w.substring(0, 3)).filter(s => s.length === 3);
     const counts = {};
     allStarts.forEach(s => counts[s] = (counts[s] || 0) + 1);
 
-    // Using the Scrabble dictionary, we want stems that have plenty of options
     const viable = Object.keys(counts).filter(s => {
         const hasVowel = /[AEIOUY]/.test(s);
-        // Stems with at least 40 words in a Scrabble dictionary are usually very playable
+        // Requirement: at least 40 words start with this
         return hasVowel && counts[s] >= 40; 
     });
 
-    const startIndex = Math.floor(getSeededRandom(0) * viable.length);
-    currentWord = viable[startIndex];
+    if (viable.length === 0) {
+        // Emergency fallback if filtering is too strict
+        currentWord = "STA"; 
+    } else {
+        const startIndex = Math.floor(getSeededRandom(0) * viable.length);
+        currentWord = viable[startIndex];
+    }
     
     const bestWord = findTrueLongestWord(currentWord);
     longestHintDisplay.innerText = `Today's potential: Up to ${bestWord.length} letters`;
