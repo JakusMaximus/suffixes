@@ -1,5 +1,5 @@
-// Using the raw link to avoid CORS/loading issues
-const DICTIONARY_URL = "https://raw.githubusercontent.com/cmcmarrow/scrabble-dictionary/master/collins_scrabble_words_2021.txt";
+const DICTIONARY_URL = "https://raw.githubusercontent.com/rressler/data_raw_courses/main/scrabble_words.txt";
+const BACKUP_URL = "https://raw.githubusercontent.com/jesstess/Scrabble/master/scrabble/sowpods.txt";
 
 let dictionary = [];
 let currentWord = "";
@@ -23,6 +23,19 @@ function getSeededRandom(additionalShift = 0) {
     return val < 0 ? val + 1 : val;
 }
 
+async function fetchWithRetry(url, backupUrl) {
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("Primary fetch failed");
+        return await response.text();
+    } catch (e) {
+        console.warn("Primary dictionary failed, trying backup...");
+        const response = await fetch(backupUrl);
+        if (!response.ok) throw new Error("Backup fetch failed");
+        return await response.text();
+    }
+}
+
 async function initGame() {
     wordDisplay = document.getElementById('word-display');
     loadingDisplay = document.getElementById('loading-display');
@@ -39,12 +52,9 @@ async function initGame() {
     dailySeedValue = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
 
     try {
-        const response = await fetch(DICTIONARY_URL);
-        if (!response.ok) throw new Error("Network response was not ok");
+        const text = await fetchWithRetry(DICTIONARY_URL, BACKUP_URL);
         
-        const text = await response.text();
-        
-        // Split by newline and clean up
+        // Clean and filter the dictionary
         dictionary = text.split(/\r?\n/)
             .map(w => w.trim().toUpperCase())
             .filter(w => w.length > 2 && /^[A-Z]+$/.test(w));
@@ -66,7 +76,7 @@ async function initGame() {
         }
     } catch (e) {
         console.error("Load error:", e);
-        if (loadingDisplay) loadingDisplay.innerText = "Error Loading Dictionary. Please refresh.";
+        if (loadingDisplay) loadingDisplay.innerText = "Error Loading Dictionary. Check connection.";
     }
 }
 
@@ -80,7 +90,6 @@ function getShortestWordLength(str) {
 
 function findTrueLongestWord(startStr) {
     let current = startStr;
-    // Safety break to prevent infinite loops in simulation
     let iterations = 0;
     while (iterations < 50) {
         iterations++;
@@ -124,20 +133,18 @@ function findTrueLongestWord(startStr) {
 // --- GAMEPLAY ---
 
 function setupDailyGame() {
-    // Generate all 3-letter starts from the actual dictionary
     const allStarts = dictionary.map(w => w.substring(0, 3)).filter(s => s.length === 3);
     const counts = {};
     allStarts.forEach(s => counts[s] = (counts[s] || 0) + 1);
 
     const viable = Object.keys(counts).filter(s => {
         const hasVowel = /[AEIOUY]/.test(s);
-        // Requirement: at least 40 words start with this
+        // Requirement: at least 40 valid words start with this prefix
         return hasVowel && counts[s] >= 40; 
     });
 
     if (viable.length === 0) {
-        // Emergency fallback if filtering is too strict
-        currentWord = "STA"; 
+        currentWord = "PLA"; // Reliable fallback
     } else {
         const startIndex = Math.floor(getSeededRandom(0) * viable.length);
         currentWord = viable[startIndex];
