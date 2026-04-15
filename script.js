@@ -1,9 +1,6 @@
-const DICTIONARY_URL = "https://raw.githubusercontent.com/dwyl/english-words/master/words_dictionary.json";
-// Using a 10,000 common words list
-const COMMON_WORDS_URL = "https://raw.githubusercontent.com/first20hours/google-10000-english/master/google-10000-english-no-swears.txt";
+const DICTIONARY_URL = "https://raw.githubusercontent.com/cmcmarrow/scrabble-dictionary/master/collins_scrabble_words_2021.txt";
 
 let dictionary = [];
-let commonWords = [];
 let currentWord = "";
 let dailySeedValue = 0; 
 const todayString = new Date().toDateString();
@@ -41,16 +38,13 @@ async function initGame() {
     dailySeedValue = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
 
     try {
-        const [dictRes, commonRes] = await Promise.all([
-            fetch(DICTIONARY_URL),
-            fetch(COMMON_WORDS_URL)
-        ]);
-
-        const dictData = await dictRes.json();
-        dictionary = Object.keys(dictData).map(w => w.toUpperCase()).filter(w => w.length > 2);
+        const response = await fetch(DICTIONARY_URL);
+        const text = await response.text();
         
-        const commonText = await commonRes.text();
-        commonWords = commonText.split('\n').map(w => w.trim().toUpperCase()).filter(w => w.length > 2);
+        // Scrabble files are usually one word per line
+        dictionary = text.split('\n')
+            .map(w => w.trim().toUpperCase())
+            .filter(w => w.length > 2 && /^[A-Z]+$/.test(w));
 
         if (loadingDisplay) loadingDisplay.style.display = 'none';
         if (wordDisplay) wordDisplay.style.display = 'block';
@@ -66,7 +60,7 @@ async function initGame() {
             setupDailyGame();
         }
     } catch (e) {
-        if (loadingDisplay) loadingDisplay.innerText = "Error Loading Dictionary.";
+        if (loadingDisplay) loadingDisplay.innerText = "Error Loading Scrabble Dictionary.";
     }
 }
 
@@ -121,16 +115,16 @@ function findTrueLongestWord(startStr) {
 // --- GAMEPLAY ---
 
 function setupDailyGame() {
+    // Generate 3-letter starts
     const allStarts = dictionary.map(w => w.substring(0, 3)).filter(s => s.length === 3);
     const counts = {};
     allStarts.forEach(s => counts[s] = (counts[s] || 0) + 1);
 
+    // Using the Scrabble dictionary, we want stems that have plenty of options
     const viable = Object.keys(counts).filter(s => {
         const hasVowel = /[AEIOUY]/.test(s);
-        const countHigh = counts[s] >= 150;
-        // Check against the 10,000 common words list
-        const commonCount = commonWords.filter(w => w.startsWith(s)).length;
-        return hasVowel && countHigh && commonCount >= 3;
+        // Stems with at least 40 words in a Scrabble dictionary are usually very playable
+        return hasVowel && counts[s] >= 40; 
     });
 
     const startIndex = Math.floor(getSeededRandom(0) * viable.length);
@@ -174,7 +168,6 @@ function handleBackspace() {
 function passTurn() {
     if (!hasAddedLetterThisTurn) return;
     
-    // Path validity check moved here (the point of no return)
     const pathExists = dictionary.some(w => w.startsWith(currentWord));
     if (!pathExists) {
         gameOver(`Loss! No words start with "${currentWord}".`);
@@ -320,7 +313,6 @@ function shareResult() {
     const len = currentWord.length;
     const streak = savedData.streak || 0;
     
-    // Generate square grid string
     let squares = "🟩".repeat(len);
     if (!savedData.won) {
         squares += "🟥";
